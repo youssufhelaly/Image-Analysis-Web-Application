@@ -1,0 +1,7 @@
+# include this file by running the following from the command line:
+#    pip install -r dependencies.txt
+Flask
+flask-cors
+flask-jwt-extended
+requests
+npm install axios
