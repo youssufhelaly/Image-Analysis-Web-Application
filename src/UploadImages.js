@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import './UploadImages.css'; // Import CSS for styling
 
 // Define the UploadImages component
 const UploadImages = () => {
@@ -93,6 +94,16 @@ const UploadImages = () => {
     setFilePreviews([]);
   };
 
+  const handleRemoveFile = (index) => {
+    // Remove file and preview at specified index
+    const updateFiles = [...selectedFiles];
+    const updatesPreviews = [...filePreviews];  
+
+    updateFiles.splice(index, 1);
+    updatesPreviews.splice(index, 1);
+    setSelectedFiles(updateFiles);
+    setFilePreviews(updatesPreviews);
+  }
 
   return (
     <div>
@@ -100,27 +111,40 @@ const UploadImages = () => {
       <form onSubmit={handleSubmit}>
         <input 
           type="file" 
-          multiple // Allow multiple file selection
-          onChange={handleFileChange} // Set handler for file input changes
+          multiple
+          onChange={handleFileChange} 
         />
-        <button type="submit" disabled={uploading}>Upload</button> {/* Disable button while uploading */}
+        <button type="submit" disabled={uploading}>Upload</button>
       </form>
-      <div>
+      <div className="preview-container">
         {filePreviews.map((preview, index) => (
-          <img key={index} src={preview} alt={`preview-${index}`} style={{ maxWidth: '100px', maxHeight: '100px' }} />
+          <div key={index} className="preview-item">
+            <img src={preview} alt={`preview-${index}`} className="preview-image" />
+            <button 
+              className="remove-button" 
+              onClick={() => handleRemoveFile(index)}
+            >
+              X
+            </button>
+          </div>
         ))}
       </div>
       <div>
         {uploadResponses.map((response, index) => (
-          <div key={index}>
-            <h3>{response.filename}</h3>
-            {response.responseData ? (
-              // Display formatted response data if available
-              <pre>{JSON.stringify(response.responseData, null, 2)}</pre>
-            ) : (
-              // Display error message if response data is not available
-              <p>{response.msg}</p>
-            )}
+          <div key={index} className="upload-response">
+            <div className="response-item">
+              {response.preview && (
+                <img src={response.preview} alt={`preview-${index}`} className="response-image" />
+              )}
+              <div className="response-info">
+                <h3>{response.filename}</h3>
+                {response.responseData ? (
+                  <pre>{JSON.stringify(response.responseData, null, 2)}</pre>
+                ) : (
+                  <p>{response.msg}</p>
+                )}
+              </div>
+            </div>
           </div>
         ))}
       </div>
