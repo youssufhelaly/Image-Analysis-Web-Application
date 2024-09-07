@@ -13,7 +13,14 @@ const UploadImages = () => {
   // State to indicate if an upload is in progress
   const [uploading, setUploading] = useState(false);
 
+  // State to store file previews
   const [filePreviews, setFilePreviews] = useState([]);
+
+  // State to store the target object
+  const [targetObject, setTargetObject] = useState({});
+
+  // State to store the target file
+  const [targetResponses, setTargetResponses] = useState({});
   
   // Handler for file input changes
   const handleFileChange = (event) => {
@@ -32,6 +39,20 @@ const UploadImages = () => {
     setFilePreviews(prevPreviews => [...prevPreviews, ...newFilePreviews]);
   };
 
+  const FindTargetObject = async (targetObject, data, file) => {
+      const FoundObject = true
+
+      if (FoundObject === true) {
+        console.log('Object found:', data);
+        setTargetResponses(prevResponses => [
+          ...prevResponses,
+          { filename: file.name, responseData: data }
+        ]);
+      } else {
+        console.log('Object not found:', data);
+      }
+
+
   // Handler to upload a single file
   const handleUpload = async (file) => {
     // Create FormData object to send file in the POST request
@@ -48,12 +69,8 @@ const UploadImages = () => {
           'Content-Type': 'multipart/form-data' // Specify the content type as multipart/form-data
         }
       });
-
+      await FindTargetObject(targetObject, response.data, file);
       // Update state with the successful response data
-      setUploadResponses(prevResponses => [
-        ...prevResponses,
-        { filename: file.name, responseData: response.data }
-      ]);
     } catch (error) {
       // Update state with an error message if the upload fails
       setUploadResponses(prevResponses => [
@@ -114,8 +131,9 @@ const UploadImages = () => {
           multiple
           onChange={handleFileChange} 
         />
-        <button type="submit" disabled={uploading}>Upload</button>
+        <button type="submit" disabled={uploading}>Find</button>
       </form>
+      <input className='target-object' value={targetObject} placeholder="Enter object to find" onChange={(event) => setTargetObject(event.target.value)}/>
       <div className="preview-container">
         {filePreviews.map((preview, index) => (
           <div key={index} className="preview-item">
@@ -130,7 +148,7 @@ const UploadImages = () => {
         ))}
       </div>
       <div>
-        {uploadResponses.map((response, index) => (
+        {targetResponses.map((response, index) => (
           <div key={index} className="upload-response">
             <div className="response-item">
               {response.preview && (
@@ -151,5 +169,5 @@ const UploadImages = () => {
     </div>
   );
 };
-
+}
 export default UploadImages;
