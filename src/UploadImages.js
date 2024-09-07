@@ -2,90 +2,106 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import './UploadImages.css'; // Import CSS for styling
 
-// Define the UploadImages component
+/**
+ * UploadImages Component
+ * Handles image file uploads, searches for objects in the images,
+ * and displays file previews and responses.
+ */
 const UploadImages = () => {
   // State to keep track of selected files
   const [selectedFiles, setSelectedFiles] = useState([]);
-  
+
   // State to store responses or error messages for each uploaded file
   const [uploadResponses, setUploadResponses] = useState([]);
-  
+
   // State to indicate if an upload is in progress
   const [uploading, setUploading] = useState(false);
 
   // State to store file previews
   const [filePreviews, setFilePreviews] = useState([]);
 
-  // State to store the target object
+  // State to store the target object to search for
   const [targetObject, setTargetObject] = useState("");
 
-  // State to store the target file responses
+  // State to store the responses for target object searches
   const [targetResponses, setTargetResponses] = useState([]);
-  
-  // Handler for file input changes
+
+  /**
+   * Handles changes to the file input element.
+   * Adds new files to the selected files state and generates previews.
+   * @param {Event} event - The file input change event.
+   */
   const handleFileChange = (event) => {
     // Convert FileList to an array
     const newFiles = Array.from(event.target.files);
 
-    // Check for duplicate files
+    // Check for duplicate files by comparing file names
     const existingFileNames = new Set(selectedFiles.map(file => file.name));
     const filteredNewFiles = newFiles.filter(file => !existingFileNames.has(file.name));
-    
+
     // Combine existing files with new files
     setSelectedFiles(prevFiles => [...prevFiles, ...filteredNewFiles]);
 
-    // Generate previews for selected images
+    // Generate previews for the new files
     const newFilePreviews = filteredNewFiles.map(file => URL.createObjectURL(file));
     setFilePreviews(prevPreviews => [...prevPreviews, ...newFilePreviews]);
   };
 
-const FindTargetObject = async (targetObject, data, file) => {
-  try {
-    // Send a POST request with targetObject and data
-    const response = await axios.post('http://localhost:5000/find-object', {
-      targetObject,
-      data
-    });
+  /**
+   * Sends a POST request to search for the target object within the image data.
+   * Updates the target responses state with the results.
+   * @param {string} targetObject - The object to search for.
+   * @param {Object} data - The image data from the upload response.
+   * @param {File} file - The file being processed.
+   */
+  const FindTargetObject = async (targetObject, data, file) => {
+    try {
+      const response = await axios.post('http://localhost:5000/find-object', {
+        targetObject,
+        data
+      });
 
-    if (response.data.found) {
-      console.log('Object found:', data);
+      if (response.data.found) {
+        console.log('Object found:', data);
+        setTargetResponses(prevResponses => [
+          ...prevResponses,
+          { filename: file.name, responseData: data, preview: URL.createObjectURL(file) }
+        ]);
+      } else {
+        console.log('Object not found:', data);
+      }
+    } catch (error) {
+      console.error('Error finding target object:', error);
       setTargetResponses(prevResponses => [
         ...prevResponses,
-        { filename: file.name, responseData: data, preview: URL.createObjectURL(file) }
+        { filename: file.name, msg: "Error finding target object: " + (error.response ? error.response.data : error.message) }
       ]);
-    } else {
-      console.log('Object not found:', data);
     }
-  } catch (error) {
-    console.error('Error finding target object:', error);
-    setTargetResponses(prevResponses => [
-      ...prevResponses,
-      { filename: file.name, msg: "Error finding target object: " + (error.response ? error.response.data : error.message) }
-    ]);
-  }
-};
+  };
 
-
-  // Handler to upload a single file
+  /**
+   * Uploads a single file to the server.
+   * Handles form submission and performs the upload and target object search.
+   * @param {File} file - The file to upload.
+   */
   const handleUpload = async (file) => {
     // Create FormData object to send file in the POST request
     const formData = new FormData();
     formData.append('files', file);
 
     try {
-      // Indicate that uploading is in progress
       setUploading(true);
-      
+
       // Perform the file upload request
       const response = await axios.post('http://localhost:5000/upload', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data' // Specify the content type as multipart/form-data
+          'Content-Type': 'multipart/form-data' // Specify the content type
         }
       });
+
+      // Search for the target object in the uploaded data
       await FindTargetObject(targetObject, response.data, file);
-      // Update state with the successful response data
     } catch (error) {
-      // Update state with an error message if the upload fails
       setUploadResponses(prevResponses => [
         ...prevResponses,
         { filename: file.name, msg: "Error uploading file: " + (error.response ? error.response.data : error.message) }
@@ -96,22 +112,22 @@ const FindTargetObject = async (targetObject, data, file) => {
     }
   };
 
-  // Handler for form submission
+  /**
+   * Handles form submission for uploading files.
+   * Iterates over selected files and uploads each one, prompting the user to upload more.
+   * @param {Event} event - The form submit event.
+   */
   const handleSubmit = async (event) => {
-    // Prevent the default form submission behavior
     event.preventDefault();
 
-    // Check if any files have been selected
     if (selectedFiles.length === 0) {
-      // Display a message if no files are selected
       setUploadResponses([{ filename: "", msg: "Please select files first." }]);
       return;
     }
 
-    // Iterate over each selected file and upload it
     for (const file of selectedFiles) {
       await handleUpload(file);
-      
+
       // Prompt user to decide if they want to upload another file
       const continueUploading = window.confirm("Do you want to upload another file?");
       if (!continueUploading) {
@@ -119,14 +135,16 @@ const FindTargetObject = async (targetObject, data, file) => {
       }
     }
 
-    // Clear selected files after the upload process
+    // Clear selected files and previews after the upload process
     setSelectedFiles([]);
     setFilePreviews([]);
   };
 
-  // Handler to remove a file and its preview
+  /**
+   * Removes a file and its preview from the selected files and previews.
+   * @param {number} index - The index of the file to remove.
+   */
   const handleRemoveFile = (index) => {
-    // Remove file and preview at specified index
     const updateFiles = [...selectedFiles];
     const updatesPreviews = [...filePreviews];  
 
@@ -134,7 +152,7 @@ const FindTargetObject = async (targetObject, data, file) => {
     updatesPreviews.splice(index, 1);
     setSelectedFiles(updateFiles);
     setFilePreviews(updatesPreviews);
-  }
+  };
 
   return (
     <div>
