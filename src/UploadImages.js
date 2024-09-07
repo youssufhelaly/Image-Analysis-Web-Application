@@ -17,10 +17,10 @@ const UploadImages = () => {
   const [filePreviews, setFilePreviews] = useState([]);
 
   // State to store the target object
-  const [targetObject, setTargetObject] = useState({});
+  const [targetObject, setTargetObject] = useState("");
 
-  // State to store the target file
-  const [targetResponses, setTargetResponses] = useState({});
+  // State to store the target file responses
+  const [targetResponses, setTargetResponses] = useState([]);
   
   // Handler for file input changes
   const handleFileChange = (event) => {
@@ -39,18 +39,31 @@ const UploadImages = () => {
     setFilePreviews(prevPreviews => [...prevPreviews, ...newFilePreviews]);
   };
 
-  const FindTargetObject = async (targetObject, data, file) => {
-      const FoundObject = true
+const FindTargetObject = async (targetObject, data, file) => {
+  try {
+    // Send a POST request with targetObject and data
+    const response = await axios.post('http://localhost:5000/find-object', {
+      targetObject,
+      data
+    });
 
-      if (FoundObject === true) {
-        console.log('Object found:', data);
-        setTargetResponses(prevResponses => [
-          ...prevResponses,
-          { filename: file.name, responseData: data }
-        ]);
-      } else {
-        console.log('Object not found:', data);
-      }
+    if (response.data.found) {
+      console.log('Object found:', data);
+      setTargetResponses(prevResponses => [
+        ...prevResponses,
+        { filename: file.name, responseData: data, preview: URL.createObjectURL(file) }
+      ]);
+    } else {
+      console.log('Object not found:', data);
+    }
+  } catch (error) {
+    console.error('Error finding target object:', error);
+    setTargetResponses(prevResponses => [
+      ...prevResponses,
+      { filename: file.name, msg: "Error finding target object: " + (error.response ? error.response.data : error.message) }
+    ]);
+  }
+};
 
 
   // Handler to upload a single file
@@ -111,6 +124,7 @@ const UploadImages = () => {
     setFilePreviews([]);
   };
 
+  // Handler to remove a file and its preview
   const handleRemoveFile = (index) => {
     // Remove file and preview at specified index
     const updateFiles = [...selectedFiles];
@@ -133,7 +147,12 @@ const UploadImages = () => {
         />
         <button type="submit" disabled={uploading}>Find</button>
       </form>
-      <input className='target-object' value={targetObject} placeholder="Enter object to find" onChange={(event) => setTargetObject(event.target.value)}/>
+      <input 
+        className='target-object' 
+        value={targetObject} 
+        placeholder="Enter object to find" 
+        onChange={(event) => setTargetObject(event.target.value)}
+      />
       <div className="preview-container">
         {filePreviews.map((preview, index) => (
           <div key={index} className="preview-item">
@@ -169,5 +188,5 @@ const UploadImages = () => {
     </div>
   );
 };
-}
+
 export default UploadImages;
