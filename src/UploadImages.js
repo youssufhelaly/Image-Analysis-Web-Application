@@ -15,9 +15,6 @@ const UploadImages = () => {
   // State to keep track of selected files
   const [selectedFiles, setSelectedFiles] = useState([]);
 
-  // State to store responses or error messages for each uploaded file
-  const [uploadResponses, setUploadResponses] = useState([]);
-
   // State to indicate if an upload is in progress
   const [uploading, setUploading] = useState(false);
 
@@ -107,10 +104,6 @@ const UploadImages = () => {
       await FindTargetObject(targetObject, response.data, file);
       toast.success('File uploaded successfully!');
     } catch (error) {
-      setUploadResponses(prevResponses => [
-        ...prevResponses,
-        { filename: file.name, msg: "Error uploading file: " + (error.response ? error.response.data : error.message) }
-      ]);
       toast.error('Error uploading file: ' + (error.response ? error.response.data : error.message));
     } finally {
       // Reset uploading state regardless of success or failure
@@ -133,13 +126,12 @@ const UploadImages = () => {
 
     for (const file of selectedFiles) {
       await handleUpload(file);
-      const continueUploading = window.confirm("Do you want to upload another file?");
-      if (!continueUploading) break;
     }
 
     // Clear selected files and previews after the upload process
     setSelectedFiles([]);
     setFilePreviews([]);
+    setTargetResponses([]);
   };
 
   /**
@@ -160,12 +152,10 @@ const UploadImages = () => {
     <Box sx={{ padding: 4 }}>
       <Typography variant="h4" gutterBottom>Upload Images</Typography>
       <form onSubmit={handleSubmit}>
-        {/* Drag and drop area for file uploads */}
         <Box {...getRootProps()} sx={{ border: '2px dashed #ccc', padding: 4, textAlign: 'center', marginBottom: 2 }}>
           <input {...getInputProps()} />
           <Typography variant="body1">Drag & drop some files here, or click to select files</Typography>
         </Box>
-        {/* Input for target object search */}
         <TextField 
           fullWidth 
           label="Enter object to find" 
@@ -174,12 +164,11 @@ const UploadImages = () => {
           onChange={(e) => setTargetObject(e.target.value)} 
           sx={{ marginBottom: 2 }}
         />
-        {/* Button to start the upload process */}
         {uploading ? <CircularProgress /> : (
           <Button variant="contained" color="primary" type="submit">Find</Button>
         )}
       </form>
-      {/* Displaying file previews */}
+
       <Grid container spacing={2} sx={{ marginTop: 2 }}>
         {filePreviews.map((preview, index) => (
           <Grid item xs={12} md={4} key={index}>
@@ -205,7 +194,37 @@ const UploadImages = () => {
           </Grid>
         ))}
       </Grid>
-      {/* Toast notifications container */}
+
+      <Box sx={{ marginTop: 4 }}>
+        {targetResponses.length > 0 ? (
+          <>
+            <Typography variant="h5" gutterBottom>Pictures with the desired Object:</Typography>
+            <Grid container spacing={2}>
+              {targetResponses.map((response, index) => (
+                <Grid item xs={12} md={4} key={index}>
+                  <Card>
+                    <CardMedia
+                      component="img"
+                      height="140"
+                      image={response.preview}
+                      alt={`target-preview-${index}`}
+                    />
+                    <CardContent>
+                      <Typography variant="h6">{response.filename}</Typography>
+                      <pre>{JSON.stringify(response.responseData, null, 2)}</pre>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </>
+        ) : (
+          <Typography variant="h6" color="textSecondary">
+            No pictures were found with the target object: "{targetObject}"
+          </Typography>
+        )}
+      </Box>
+
       <ToastContainer />
     </Box>
   );
