@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import './UploadImages.css'; // Import CSS for styling
+import { Box, Button, TextField, Grid, Typography, CircularProgress, Card, CardMedia, CardContent } from '@mui/material';
+import { useDropzone } from 'react-dropzone';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import './UploadImages.css'; // Import CSS for additional styling
 
 /**
  * UploadImages Component
- * Handles image file uploads, searches for objects in the images,
- * and displays file previews and responses.
+ * Handles image file uploads, provides drag-and-drop functionality,
+ * searches for objects within the uploaded images, and displays previews and results.
  */
 const UploadImages = () => {
   // State to keep track of selected files
@@ -27,17 +31,15 @@ const UploadImages = () => {
   const [targetResponses, setTargetResponses] = useState([]);
 
   /**
-   * Handles changes to the file input element.
+   * Handles file drop using React Dropzone.
    * Adds new files to the selected files state and generates previews.
-   * @param {Event} event - The file input change event.
+   * Filters out duplicate files by comparing file names.
+   * @param {Array} acceptedFiles - The files dropped or selected by the user.
    */
-  const handleFileChange = (event) => {
-    // Convert FileList to an array
-    const newFiles = Array.from(event.target.files);
-
-    // Check for duplicate files by comparing file names
+  const onDrop = (acceptedFiles) => {
+    // Filter out duplicate files by comparing file names
     const existingFileNames = new Set(selectedFiles.map(file => file.name));
-    const filteredNewFiles = newFiles.filter(file => !existingFileNames.has(file.name));
+    const filteredNewFiles = acceptedFiles.filter(file => !existingFileNames.has(file.name));
 
     // Combine existing files with new files
     setSelectedFiles(prevFiles => [...prevFiles, ...filteredNewFiles]);
@@ -46,6 +48,9 @@ const UploadImages = () => {
     const newFilePreviews = filteredNewFiles.map(file => URL.createObjectURL(file));
     setFilePreviews(prevPreviews => [...prevPreviews, ...newFilePreviews]);
   };
+
+  // Extract Dropzone props for drag-and-drop functionality
+  const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
   /**
    * Sends a POST request to search for the target object within the image data.
@@ -81,7 +86,8 @@ const UploadImages = () => {
 
   /**
    * Uploads a single file to the server.
-   * Handles form submission and performs the upload and target object search.
+   * Handles file upload and invokes the target object search.
+   * Provides feedback using React Toastify.
    * @param {File} file - The file to upload.
    */
   const handleUpload = async (file) => {
@@ -94,18 +100,18 @@ const UploadImages = () => {
 
       // Perform the file upload request
       const response = await axios.post('http://localhost:5000/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data' // Specify the content type
-        }
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
 
       // Search for the target object in the uploaded data
       await FindTargetObject(targetObject, response.data, file);
+      toast.success('File uploaded successfully!');
     } catch (error) {
       setUploadResponses(prevResponses => [
         ...prevResponses,
         { filename: file.name, msg: "Error uploading file: " + (error.response ? error.response.data : error.message) }
       ]);
+      toast.error('Error uploading file: ' + (error.response ? error.response.data : error.message));
     } finally {
       // Reset uploading state regardless of success or failure
       setUploading(false);
@@ -121,18 +127,14 @@ const UploadImages = () => {
     event.preventDefault();
 
     if (selectedFiles.length === 0) {
-      setUploadResponses([{ filename: "", msg: "Please select files first." }]);
+      toast.error('Please select files first.');
       return;
     }
 
     for (const file of selectedFiles) {
       await handleUpload(file);
-
-      // Prompt user to decide if they want to upload another file
       const continueUploading = window.confirm("Do you want to upload another file?");
-      if (!continueUploading) {
-        break;
-      }
+      if (!continueUploading) break;
     }
 
     // Clear selected files and previews after the upload process
@@ -155,55 +157,57 @@ const UploadImages = () => {
   };
 
   return (
-    <div>
-      <h1>Upload Images</h1>
+    <Box sx={{ padding: 4 }}>
+      <Typography variant="h4" gutterBottom>Upload Images</Typography>
       <form onSubmit={handleSubmit}>
-        <input 
-          type="file" 
-          multiple
-          onChange={handleFileChange} 
+        {/* Drag and drop area for file uploads */}
+        <Box {...getRootProps()} sx={{ border: '2px dashed #ccc', padding: 4, textAlign: 'center', marginBottom: 2 }}>
+          <input {...getInputProps()} />
+          <Typography variant="body1">Drag & drop some files here, or click to select files</Typography>
+        </Box>
+        {/* Input for target object search */}
+        <TextField 
+          fullWidth 
+          label="Enter object to find" 
+          variant="outlined" 
+          value={targetObject} 
+          onChange={(e) => setTargetObject(e.target.value)} 
+          sx={{ marginBottom: 2 }}
         />
-        <button type="submit" disabled={uploading}>Find</button>
+        {/* Button to start the upload process */}
+        {uploading ? <CircularProgress /> : (
+          <Button variant="contained" color="primary" type="submit">Find</Button>
+        )}
       </form>
-      <input 
-        className='target-object' 
-        value={targetObject} 
-        placeholder="Enter object to find" 
-        onChange={(event) => setTargetObject(event.target.value)}
-      />
-      <div className="preview-container">
+      {/* Displaying file previews */}
+      <Grid container spacing={2} sx={{ marginTop: 2 }}>
         {filePreviews.map((preview, index) => (
-          <div key={index} className="preview-item">
-            <img src={preview} alt={`preview-${index}`} className="preview-image" />
-            <button 
-              className="remove-button" 
-              onClick={() => handleRemoveFile(index)}
-            >
-              X
-            </button>
-          </div>
+          <Grid item xs={12} md={4} key={index}>
+            <Card>
+              <CardMedia
+                component="img"
+                height="140"
+                image={preview}
+                alt={`preview-${index}`}
+              />
+              <CardContent>
+                <Typography variant="h6">{selectedFiles[index].name}</Typography>
+                <Button 
+                  variant="contained" 
+                  color="secondary" 
+                  onClick={() => handleRemoveFile(index)}
+                  sx={{ marginTop: 1 }}
+                >
+                  Remove
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
         ))}
-      </div>
-      <div>
-        {targetResponses.map((response, index) => (
-          <div key={index} className="upload-response">
-            <div className="response-item">
-              {response.preview && (
-                <img src={response.preview} alt={`preview-${index}`} className="response-image" />
-              )}
-              <div className="response-info">
-                <h3>{response.filename}</h3>
-                {response.responseData ? (
-                  <pre>{JSON.stringify(response.responseData, null, 2)}</pre>
-                ) : (
-                  <p>{response.msg}</p>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+      </Grid>
+      {/* Toast notifications container */}
+      <ToastContainer />
+    </Box>
   );
 };
 
