@@ -27,13 +27,25 @@ const UploadImages = () => {
   // State to store the responses for target object searches
   const [targetResponses, setTargetResponses] = useState([]);
 
+  // State to indicate if a search has been performed
+  const [searchPerformed, setSearchPerformed] = useState(false);
+
+  // State to check if all files have been searched
+  const [searchCompletion, setSearchCompletion] = useState(false);
+
   /**
    * Handles file drop using React Dropzone.
    * Adds new files to the selected files state and generates previews.
    * Filters out duplicate files by comparing file names.
    * @param {Array} acceptedFiles - The files dropped or selected by the user.
    */
-  const onDrop = (acceptedFiles) => {
+    const onDrop = (acceptedFiles) => {
+    // Clear previous responses and file previews
+    setTargetResponses([]);
+    setFilePreviews([]);
+    setSearchPerformed(false);
+    setSearchCompletion(false);
+
     // Filter out duplicate files by comparing file names
     const existingFileNames = new Set(selectedFiles.map(file => file.name));
     const filteredNewFiles = acceptedFiles.filter(file => !existingFileNames.has(file.name));
@@ -67,7 +79,7 @@ const UploadImages = () => {
         console.log('Object found:', data);
         setTargetResponses(prevResponses => [
           ...prevResponses,
-          { filename: file.name, responseData: data, preview: URL.createObjectURL(file) }
+          { filename: file.name, responseData: data, preview: URL.createObjectURL(file), number_of_objects_found: response.data.number_of_objects_found }
         ]);
       } else {
         console.log('Object not found:', data);
@@ -102,7 +114,6 @@ const UploadImages = () => {
 
       // Search for the target object in the uploaded data
       await FindTargetObject(targetObject, response.data, file);
-      toast.success('File uploaded successfully!');
     } catch (error) {
       toast.error('Error uploading file: ' + (error.response ? error.response.data : error.message));
     } finally {
@@ -124,14 +135,17 @@ const UploadImages = () => {
       return;
     }
 
+    setSearchPerformed(true);
+
     for (const file of selectedFiles) {
       await handleUpload(file);
     }
+    setSearchCompletion(true);
+    toast.success('All files  uploaded successfully!');
 
     // Clear selected files and previews after the upload process
     setSelectedFiles([]);
     setFilePreviews([]);
-    setTargetResponses([]);
   };
 
   /**
@@ -140,7 +154,7 @@ const UploadImages = () => {
    */
   const handleRemoveFile = (index) => {
     const updateFiles = [...selectedFiles];
-    const updatesPreviews = [...filePreviews];  
+    const updatesPreviews = [...filePreviews];
 
     updateFiles.splice(index, 1);
     updatesPreviews.splice(index, 1);
@@ -180,7 +194,7 @@ const UploadImages = () => {
                 alt={`preview-${index}`}
               />
               <CardContent>
-                <Typography variant="h6">{selectedFiles[index].name}</Typography>
+                <Typography variant="h6">{selectedFiles[index] ? selectedFiles[index].name : 'File Removed'}</Typography>
                 <Button 
                   variant="contained" 
                   color="secondary" 
@@ -196,35 +210,38 @@ const UploadImages = () => {
       </Grid>
 
       <Box sx={{ marginTop: 4 }}>
-        {targetResponses.length > 0 ? (
-          <>
-            <Typography variant="h5" gutterBottom>Pictures with the desired Object:</Typography>
-            <Grid container spacing={2}>
-              {targetResponses.map((response, index) => (
-                <Grid item xs={12} md={4} key={index}>
-                  <Card>
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={response.preview}
-                      alt={`target-preview-${index}`}
-                    />
-                    <CardContent>
-                      <Typography variant="h6">{response.filename}</Typography>
-                      <pre>{JSON.stringify(response.responseData, null, 2)}</pre>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </>
-        ) : (
-          <Typography variant="h6" color="textSecondary">
-            No pictures were found with the target object: "{targetObject}"
-          </Typography>
-        )}
+        {searchPerformed ? (
+          targetResponses.length > 0 ? (
+            <>
+              <Typography variant="h5" gutterBottom>Pictures with the desired Object:</Typography>
+              <Grid container spacing={2}>
+                {targetResponses.map((response, index) => (
+                  <Grid item xs={12} md={4} key={index}>
+                    <Card>
+                      <CardMedia
+                        component="img"
+                        height="140"
+                        image={response.preview}
+                        alt={`target-preview-${index}`}
+                      />
+                      <CardContent>
+                        <Typography variant="h6">{response.filename}</Typography>
+                        <pre> There are {response.number_of_objects_found} of your desired object in this image</pre>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </>
+          ) : (
+            searchCompletion && (
+              <Typography variant="h6" color="textSecondary">
+                No pictures were found with the target object: "{targetObject}"
+              </Typography>
+            )
+          )
+        ) : null}
       </Box>
-
       <ToastContainer />
     </Box>
   );
