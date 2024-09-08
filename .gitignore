@@ -24,3 +24,5 @@ yarn-error.log*
 
 .JPG
 /uploads
+/.venv
+/__pycache__
