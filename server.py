@@ -82,16 +82,15 @@ def find_object():
         return jsonify({'error': 'Missing targetObject or data'}), 400
 
     found_target_object = False
+    number_of_objects_found = 0
     for item in data:
         if 'response' in item:
             for obj in item['response'].get('Objects', []):
                 if obj.get('ObjectClassName') == target_object.lower():
                     found_target_object = True
-                    break
-        if found_target_object:
-            break
+                    number_of_objects_found += 1
 
-    return jsonify({'found': found_target_object})
+    return jsonify({'found': found_target_object, 'number_of_objects_found': number_of_objects_found})
 
 if __name__ == "__main__":
     app.run(debug=True)
