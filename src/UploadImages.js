@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import JSZip from 'jszip';
 import axios from 'axios';
 import { Box, Button, TextField, Grid, Typography, CircularProgress, Card, CardMedia, CardContent } from '@mui/material';
 import { useDropzone } from 'react-dropzone';
@@ -39,22 +40,44 @@ const UploadImages = () => {
    * Filters out duplicate files by comparing file names.
    * @param {Array} acceptedFiles - The files dropped or selected by the user.
    */
-    const onDrop = (acceptedFiles) => {
+    const onDrop = async (acceptedFiles) => {
     // Clear previous responses and file previews
     setTargetResponses([]);
     setFilePreviews([]);
     setSearchPerformed(false);
     setSearchCompletion(false);
 
-    // Filter out duplicate files by comparing file names
-    const existingFileNames = new Set(selectedFiles.map(file => file.name));
-    const filteredNewFiles = acceptedFiles.filter(file => !existingFileNames.has(file.name));
+    const newFiles = [];
 
-    // Combine existing files with new files
-    setSelectedFiles(prevFiles => [...prevFiles, ...filteredNewFiles]);
+    for (const file of acceptedFiles) {
+      if (file.type === 'application/zip') {
+        // Handle zip file
+        const zip = new JSZip();
+        const zipContent = await file.arrayBuffer();
+        const unzipped = await zip.loadAsync(zipContent);
+
+        // Collect all file promises
+        const filePromises = Object.keys(unzipped.files).map(async (filename) => {
+          const file = unzipped.files[filename];
+          if (!file.dir) {
+            const fileBlob = await file.async('blob');
+            return new File([fileBlob], filename);
+          }
+          return null;
+        });
+
+        // Filter out null values and add to newFiles
+        const files = (await Promise.all(filePromises)).filter(file => file !== null);
+        newFiles.push(...files);
+      } else {
+        // Handle regular files
+        newFiles.push(file);
+      }
+    }
 
     // Generate previews for the new files
-    const newFilePreviews = filteredNewFiles.map(file => URL.createObjectURL(file));
+    const newFilePreviews = newFiles.map(file => URL.createObjectURL(file));
+    setSelectedFiles(prevFiles => [...prevFiles, ...newFiles]);
     setFilePreviews(prevPreviews => [...prevPreviews, ...newFilePreviews]);
   };
 
@@ -76,13 +99,10 @@ const UploadImages = () => {
       });
 
       if (response.data.found) {
-        console.log('Object found:', data);
         setTargetResponses(prevResponses => [
           ...prevResponses,
           { filename: file.name, responseData: data, preview: URL.createObjectURL(file), number_of_objects_found: response.data.number_of_objects_found }
         ]);
-      } else {
-        console.log('Object not found:', data);
       }
     } catch (error) {
       console.error('Error finding target object:', error);
@@ -135,11 +155,18 @@ const UploadImages = () => {
       return;
     }
 
+    if (targetObject === "") {
+      toast.error('Please enter a target object.');
+      return;
+    }
+
     setSearchPerformed(true);
+    setSearchCompletion(false);
 
     for (const file of selectedFiles) {
       await handleUpload(file);
     }
+
     setSearchCompletion(true);
     toast.success('All files  uploaded successfully!');
 
@@ -153,13 +180,18 @@ const UploadImages = () => {
    * @param {number} index - The index of the file to remove.
    */
   const handleRemoveFile = (index) => {
-    const updateFiles = [...selectedFiles];
-    const updatesPreviews = [...filePreviews];
+    const updatedFiles = [...selectedFiles];
+    const updatedPreviews = [...filePreviews];
 
-    updateFiles.splice(index, 1);
-    updatesPreviews.splice(index, 1);
-    setSelectedFiles(updateFiles);
-    setFilePreviews(updatesPreviews);
+    updatedFiles.splice(index, 1);
+    updatedPreviews.splice(index, 1);
+    setSelectedFiles(updatedFiles);
+    setFilePreviews(updatedPreviews);
+  };
+
+  const handleRemoveAllFiles = () => {
+    setSelectedFiles([]);
+    setFilePreviews([]);
   };
 
   return (
@@ -182,7 +214,7 @@ const UploadImages = () => {
           <Button variant="contained" color="primary" type="submit">Find</Button>
         )}
       </form>
-
+      <Button variant="contained" color="secondary" onClick={handleRemoveAllFiles} sx={{ marginTop: 2 }}>Remove All</Button>
       <Grid container spacing={2} sx={{ marginTop: 2 }}>
         {filePreviews.map((preview, index) => (
           <Grid item xs={12} md={4} key={index}>
@@ -226,7 +258,7 @@ const UploadImages = () => {
                       />
                       <CardContent>
                         <Typography variant="h6">{response.filename}</Typography>
-                        <pre> There are {response.number_of_objects_found} of your desired object in this image</pre>
+                        <pre>There are {response.number_of_objects_found} of your desired object in this image</pre>
                       </CardContent>
                     </Card>
                   </Grid>
