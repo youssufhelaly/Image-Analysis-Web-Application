@@ -258,7 +258,7 @@ const UploadImages = () => {
                       />
                       <CardContent>
                         <Typography variant="h6">{response.filename}</Typography>
-                        <pre>There are {response.number_of_objects_found} of your desired object in this image</pre>
+                        <pre>{JSON.stringify(response.responseData, null, 2)}</pre>
                       </CardContent>
                     </Card>
                   </Grid>
