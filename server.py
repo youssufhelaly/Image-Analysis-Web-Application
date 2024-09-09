@@ -1,7 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-import requests
+import boto3
+from io import BytesIO
 import logging
 
 app = Flask(__name__)
@@ -10,7 +11,13 @@ CORS(app)  # Enable CORS for all routes
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
-CLOUDMERSIVE_API_KEY = "e7386a3f-9002-4461-9f7e-0f42be0d258f"
+# Initialize the Rekognition client with default credentials
+rekognition_client = boto3.client(
+    'rekognition',
+    aws_access_key_id='AKIAQWHCQDLRD4XSAUP7',
+    aws_secret_access_key='T3mI4i9HyKZt8y2Agd++MZbCLlux2ziHsc0JVzfb',
+    region_name='us-west-2'  # Replace with your preferred region
+)
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
@@ -25,40 +32,27 @@ def upload_image():
             responses.append({"filename": file.filename, "msg": "No selected file"})
             continue
 
-        file_path = os.path.join("uploads", file.filename)
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)  # Ensure the directory exists
-        file.save(file_path)
+        # Read the file into memory
+        image_bytes = file.read()
 
         try:
-            with open(file_path, 'rb') as image_file:
-                headers = {
-                    "Apikey": CLOUDMERSIVE_API_KEY
-                }
-                files = {
-                    'imageFile': image_file
-                }
-                api_response = requests.post(
-                    "https://api.cloudmersive.com/image/recognize/detect-objects",
-                    headers=headers,
-                    files=files
-                )
+            # Call Rekognition's detect_labels API
+            response = rekognition_client.detect_labels(
+                Image={'Bytes': image_bytes},
+                MaxLabels=10,  # Maximum number of labels to return
+                MinConfidence=70  # Minimum confidence level for labels
+            )
 
-            if api_response.status_code == 200:
-                responses.append({
-                    "filename": file.filename,
-                    "response": api_response.json()
-                })
-            else:
-                responses.append({
-                    "filename": file.filename,
-                    "msg": "Error processing image",
-                    "error": api_response.text
-                })
-
-        except requests.RequestException as e:
+            # Process the response
             responses.append({
                 "filename": file.filename,
-                "msg": "Error connecting to the recognition service",
+                "response": response
+            })
+
+        except boto3.exceptions.Boto3Error as e:
+            responses.append({
+                "filename": file.filename,
+                "msg": "Error connecting to Rekognition service",
                 "error": str(e)
             })
         except Exception as e:
@@ -82,14 +76,29 @@ def find_object():
 
     found_target_object = False
     number_of_objects_found = 0
+    unique_labels = set()  # To store unique labels
+
     for item in data:
         if 'response' in item:
-            for obj in item['response'].get('Objects', []):
-                if obj.get('ObjectClassName') == target_object.lower():
+            labels = item['response'].get('Labels', [])
+            for label in labels:
+                label_name = label.get('Name').lower()
+                # Check if the label's name matches the target object
+                if label_name == target_object.lower():
                     found_target_object = True
-                    number_of_objects_found += 1
+                    # If there are instances, count them
+                    instances = label.get('Instances', [])
+                    if instances:
+                        number_of_objects_found += len(instances)
+                    else:
+                        # If there are no instances, but the label is present, count it as one detection
+                        if label_name not in unique_labels:
+                            number_of_objects_found += 1
+                            unique_labels.add(label_name)
 
     return jsonify({'found': found_target_object, 'number_of_objects_found': number_of_objects_found})
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
