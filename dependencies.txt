@@ -5,3 +5,4 @@ flask-cors
 flask-jwt-extended
 requests
 #npm install axios
+boto3
