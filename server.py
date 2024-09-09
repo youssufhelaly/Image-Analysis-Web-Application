@@ -39,7 +39,6 @@ def upload_image():
             # Call Rekognition's detect_labels API
             response = rekognition_client.detect_labels(
                 Image={'Bytes': image_bytes},
-                MaxLabels=10,  # Maximum number of labels to return
                 MinConfidence=70  # Minimum confidence level for labels
             )
 
@@ -78,23 +77,15 @@ def find_object():
     number_of_objects_found = 0
     unique_labels = set()  # To store unique labels
 
+    target_object_lower = target_object.lower()
     for item in data:
         if 'response' in item:
             labels = item['response'].get('Labels', [])
             for label in labels:
-                label_name = label.get('Name').lower()
-                # Check if the label's name matches the target object
-                if label_name == target_object.lower():
+                if label.get('Name', '').lower() == target_object_lower:
                     found_target_object = True
-                    # If there are instances, count them
-                    instances = label.get('Instances', [])
-                    if instances:
-                        number_of_objects_found += len(instances)
-                    else:
-                        # If there are no instances, but the label is present, count it as one detection
-                        if label_name not in unique_labels:
-                            number_of_objects_found += 1
-                            unique_labels.add(label_name)
+                    number_of_objects_found += len(label.get('Instances', [label]))
+                    break
 
     return jsonify({'found': found_target_object, 'number_of_objects_found': number_of_objects_found})
 
