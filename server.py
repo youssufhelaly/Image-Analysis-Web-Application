@@ -2,21 +2,20 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import boto3
-from io import BytesIO
 import logging
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)  # Consider restricting this in production
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
-# Initialize the Rekognition client with default credentials
+# Initialize the Rekognition client with environment credentials
 rekognition_client = boto3.client(
     'rekognition',
-    aws_access_key_id='AKIAQWHCQDLRD4XSAUP7',
-    aws_secret_access_key='T3mI4i9HyKZt8y2Agd++MZbCLlux2ziHsc0JVzfb',
-    region_name='us-west-2'  # Replace with your preferred region
+    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+    region_name=os.getenv('AWS_REGION', 'us-west-2')  # Default region as fallback
 )
 
 @app.route('/upload', methods=['POST'])
@@ -36,25 +35,28 @@ def upload_image():
         image_bytes = file.read()
 
         try:
+            logging.debug("Calling Rekognition API for file: %s", file.filename)
             # Call Rekognition's detect_labels API
             response = rekognition_client.detect_labels(
                 Image={'Bytes': image_bytes},
-                MinConfidence=70  # Minimum confidence level for labels
+                MinConfidence=70
             )
 
-            # Process the response
+            logging.info("Rekognition succeeded for file: %s", file.filename)
             responses.append({
                 "filename": file.filename,
                 "response": response
             })
 
         except boto3.exceptions.Boto3Error as e:
+            logging.error("Rekognition failed for file: %s, error: %s", file.filename, e)
             responses.append({
                 "filename": file.filename,
                 "msg": "Error connecting to Rekognition service",
                 "error": str(e)
             })
         except Exception as e:
+            logging.error("Error processing image for file: %s, error: %s", file.filename, e)
             responses.append({
                 "filename": file.filename,
                 "msg": "Error processing image",
@@ -75,9 +77,8 @@ def find_object():
 
     found_target_object = False
     number_of_objects_found = 0
-    unique_labels = set()  # To store unique labels
-
     target_object_lower = target_object.lower()
+
     for item in data:
         if 'response' in item:
             labels = item['response'].get('Labels', [])
@@ -88,7 +89,6 @@ def find_object():
                     break
 
     return jsonify({'found': found_target_object, 'number_of_objects_found': number_of_objects_found})
-
 
 
 if __name__ == "__main__":
