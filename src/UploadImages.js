@@ -43,7 +43,6 @@ const UploadImages = () => {
     const onDrop = async (acceptedFiles) => {
     // Clear previous responses and file previews
     setTargetResponses([]);
-    setFilePreviews([]);
     setSearchPerformed(false);
     setSearchCompletion(false);
 
@@ -149,31 +148,24 @@ const UploadImages = () => {
    */
   const handleSubmit = async (event) => {
     event.preventDefault();
-
-    if (selectedFiles.length === 0) {
-      toast.error('Please select files first.');
+  
+    if (selectedFiles.length === 0 || targetObject === "") {
+      toast.error('Please select files and enter a target object.');
       return;
     }
-
-    if (targetObject === "") {
-      toast.error('Please enter a target object.');
-      return;
-    }
-
+  
     setSearchPerformed(true);
     setSearchCompletion(false);
-
-    for (const file of selectedFiles) {
-      await handleUpload(file);
-    }
-
+  
+    await Promise.all(selectedFiles.map(file => handleUpload(file)));
+  
     setSearchCompletion(true);
-    toast.success('All files  uploaded successfully!');
-
-    // Clear selected files and previews after the upload process
+    toast.success('All files uploaded successfully!');
+  
     setSelectedFiles([]);
     setFilePreviews([]);
   };
+  
 
   /**
    * Removes a file and its preview from the selected files and previews.
@@ -196,40 +188,76 @@ const UploadImages = () => {
 
   return (
     <Box sx={{ padding: 4 }}>
-      <Typography variant="h4" gutterBottom>Upload Images</Typography>
+      {/* Header for the Upload Section */}
+      <Typography variant="h4" gutterBottom>
+        Upload Images
+      </Typography>
+
+      {/* Form for Image Upload and Object Search */}
       <form onSubmit={handleSubmit}>
-        <Box {...getRootProps()} sx={{ border: '2px dashed #ccc', padding: 4, textAlign: 'center', marginBottom: 2 }}>
+        {/* Drag-and-drop area for uploading images */}
+        <Box
+          {...getRootProps()}
+          sx={{
+            border: '2px dashed #ccc',
+            padding: 4,
+            textAlign: 'center',
+            marginBottom: 2
+          }}
+        >
           <input {...getInputProps()} />
-          <Typography variant="body1">Drag & drop some files here, or click to select files</Typography>
+          <Typography variant="body1">
+            Drag & drop some files here, or click to select files
+          </Typography>
         </Box>
-        <TextField 
-          fullWidth 
-          label="Enter object to find" 
-          variant="outlined" 
-          value={targetObject} 
-          onChange={(e) => setTargetObject(e.target.value)} 
+
+        {/* Input for target object to search within images */}
+        <TextField
+          fullWidth
+          label="Enter object to find"
+          variant="outlined"
+          value={targetObject}
+          onChange={(e) => setTargetObject(e.target.value)}
           sx={{ marginBottom: 2 }}
         />
-        {uploading ? <CircularProgress /> : (
-          <Button variant="contained" color="primary" type="submit">Find</Button>
+
+        {/* Upload button or loading spinner during upload */}
+        {uploading ? (
+          <CircularProgress />
+        ) : (
+          <Button variant="contained" color="primary" type="submit">
+            Find
+          </Button>
         )}
       </form>
-      <Button variant="contained" color="secondary" onClick={handleRemoveAllFiles} sx={{ marginTop: 2 }}>Remove All</Button>
+
+      {/* Remove all files button */}
+      <Button
+        variant="contained"
+        color="secondary"
+        onClick={handleRemoveAllFiles}
+        sx={{ marginTop: 2 }}
+      >
+        Remove All
+      </Button>
+
+      {/* Preview of uploaded files */}
       <Grid container spacing={2} sx={{ marginTop: 2 }}>
         {filePreviews.map((preview, index) => (
           <Grid item xs={12} md={4} key={index}>
-            <Card>
+            <Card className="response-card">
               <CardMedia
                 component="img"
                 height="140"
                 image={preview}
                 alt={`preview-${index}`}
               />
-              <CardContent>
-                <Typography variant="h6">{selectedFiles[index] ? selectedFiles[index].name : 'File Removed'}</Typography>
-                <Button 
-                  variant="contained" 
-                  color="secondary" 
+              <CardContent className="card-content">
+                <Typography variant="body2" noWrap>
+                  {selectedFiles[index] ? selectedFiles[index].name : 'File Removed'}
+                </Typography>
+                <Button
+                  className="remove-button"
                   onClick={() => handleRemoveFile(index)}
                   sx={{ marginTop: 1 }}
                 >
@@ -241,39 +269,75 @@ const UploadImages = () => {
         ))}
       </Grid>
 
+      {/* Displaying search results after a search is performed */}
       <Box sx={{ marginTop: 4 }}>
-        {searchPerformed ? (
-          targetResponses.length > 0 ? (
-            <>
-              <Typography variant="h5" gutterBottom>Pictures with the desired Object:</Typography>
-              <Grid container spacing={2}>
-                {targetResponses.map((response, index) => (
-                  <Grid item xs={12} md={4} key={index}>
-                    <Card>
-                      <CardMedia
-                        component="img"
-                        height="140"
-                        image={response.preview}
-                        alt={`target-preview-${index}`}
-                      />
-                      <CardContent>
-                        <Typography variant="h6">{response.filename}</Typography>
-                        <pre>{JSON.stringify(response.responseData, null, 2)}</pre>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            </>
-          ) : (
-            searchCompletion && (
-              <Typography variant="h6" color="textSecondary">
-                No pictures were found with the target object: "{targetObject}"
-              </Typography>
-            )
-          )
-        ) : null}
-      </Box>
+  {searchPerformed ? (
+    targetResponses.length > 0 ? (
+      <>
+        <Typography variant="h5" gutterBottom>
+          Pictures with the desired Object:
+        </Typography>
+        <Grid container spacing={2}>
+          {targetResponses.map((response, index) => (
+            <Grid item xs={12} md={4} key={index}>
+              <Card>
+                <CardMedia
+                  component="img"
+                  height="140"
+                  image={response.preview}
+                  alt={`target-preview-${index}`}
+                />
+                <CardContent>
+                  <Typography variant="h6">{response.filename}</Typography>
+
+                  {/* Displaying number of objects found */}
+                  {response.number_of_objects_found !== undefined ? (
+                    <Typography variant="body2" color="textSecondary">
+                      Number of '{targetObject}' found in the image: {response.number_of_objects_found}
+                    </Typography>
+                  ) : null}
+
+                  {/* Handling response data rendering based on content type */}
+                  {response.responseData.text && (
+                    <Typography variant="body2" color="textSecondary">
+                      {response.responseData.text}
+                    </Typography>
+                  )}
+
+                  {response.responseData.info && (
+                    <Box sx={{ marginTop: 1 }}>
+                      <Typography variant="subtitle2">Additional Info:</Typography>
+                      <pre>{JSON.stringify(response.responseData.info, null, 2)}</pre>
+                    </Box>
+                  )}
+
+                  {response.responseData.objects && response.responseData.objects.length > 0 && (
+                    <Box sx={{ marginTop: 1 }}>
+                      <Typography variant="subtitle2">Objects Detected:</Typography>
+                      <ul>
+                        {response.responseData.objects.map((obj, idx) => (
+                          <li key={idx}>{obj}</li>
+                        ))}
+                      </ul>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </>
+    ) : (
+      searchCompletion && (
+        <Typography variant="h6" color="textSecondary">
+          No pictures were found with the target object: "{targetObject}"
+        </Typography>
+      )
+    )
+  ) : null}
+</Box>
+
+      {/* Toast notifications container */}
       <ToastContainer />
     </Box>
   );
