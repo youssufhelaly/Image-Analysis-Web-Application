@@ -184,7 +184,9 @@ const UploadImages = () => {
   const handleRemoveAllFiles = () => {
     setSelectedFiles([]);
     setFilePreviews([]);
-  };
+    setTargetResponses([]);
+    setSearchPerformed(false);
+    };
 
   return (
     <Box sx={{ padding: 4 }}>
