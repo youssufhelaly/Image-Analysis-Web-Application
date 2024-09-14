@@ -39,7 +39,7 @@ def upload_image():
             # Call Rekognition's detect_labels API
             response = rekognition_client.detect_labels(
                 Image={'Bytes': image_bytes},
-                MinConfidence=70
+                MinConfidence=80
             )
 
             logging.info("Rekognition succeeded for file: %s", file.filename)
@@ -68,27 +68,32 @@ def upload_image():
 
 @app.route('/find-object', methods=['POST'])
 def find_object():
-    data = request.get_json()
-    target_object = data.get('targetObject')
-    data = data.get('data')
+    data = request.get_json()  # Extract the JSON data from the request
+    uploaded_data = data.get('data')  # The data returned from the upload
+    target_object = data.get('object')  # The target object to search for
+    min_count = data.get('count')  # Minimum number of objects required
 
-    if not target_object or not data:
-        return jsonify({'error': 'Missing targetObject or data'}), 400
+    if not target_object or not min_count or not uploaded_data:
+        return jsonify({'error': 'Missing data, object, or count in request'}), 400
 
     found_target_object = False
     number_of_objects_found = 0
-    target_object_lower = target_object.lower()
+    target_object = target_object.lower()
 
-    for item in data:
+    for item in uploaded_data:
         if 'response' in item:
             labels = item['response'].get('Labels', [])
             for label in labels:
-                if label.get('Name', '').lower() == target_object_lower:
+                if label.get('Name', '').lower() == target_object:
                     found_target_object = True
-                    number_of_objects_found += len(label.get('Instances', [label]))
+                    number_of_objects_found += 1
                     break
+    
+    if (number_of_objects_found < int(min_count)):
+        found_target_object = False
 
     return jsonify({'found': found_target_object, 'number_of_objects_found': number_of_objects_found})
+
 
 
 if __name__ == "__main__":
