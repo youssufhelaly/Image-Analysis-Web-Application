@@ -1,11 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import JSZip from 'jszip';
 import axios from 'axios';
-import { Box, Button, TextField, Grid, Typography, CircularProgress, Card, CardMedia, CardContent, Chip } from '@mui/material';
+import {
+  Box,
+  Button,
+  TextField,
+  Grid,
+  Typography,
+  CircularProgress,
+  Card,
+  CardMedia,
+  CardContent,
+  Chip,
+} from '@mui/material';
 import { useDropzone } from 'react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './UploadImages.css'; // Import CSS for additional styling
+
+const FilePreview = ({ preview, filename, onRemove }) => (
+  <Grid item xs={12} md={4}>
+    <Card className="response-card">
+      <CardMedia
+        component="img"
+        height="140"
+        image={preview}
+        alt={`preview-${filename}`}
+        sx={{ objectFit: 'cover' }} // Ensure proper image scaling
+      />
+      <CardContent className="card-content">
+        <Typography variant="body2" noWrap>
+          {filename}
+        </Typography>
+        <Button className="remove-button" onClick={onRemove} sx={{ marginTop: 2 }}>
+          Remove
+        </Button>
+      </CardContent>
+    </Card>
+  </Grid>
+);
 
 const UploadImages = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -18,7 +51,7 @@ const UploadImages = () => {
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [searchCompletion, setSearchCompletion] = useState(false);
 
-  const onDrop = async (acceptedFiles) => {
+  const onDrop = useCallback(async (acceptedFiles) => {
     setTargetResponses([]);
     setSearchPerformed(false);
     setSearchCompletion(false);
@@ -37,40 +70,40 @@ const UploadImages = () => {
           }
           return null;
         });
-        const files = (await Promise.all(filePromises)).filter(file => file !== null);
+        const files = (await Promise.all(filePromises)).filter((file) => file !== null);
         newFiles.push(...files);
       } else {
         newFiles.push(file);
       }
     }
-    const newFilePreviews = newFiles.map(file => URL.createObjectURL(file));
-    setSelectedFiles(prevFiles => [...prevFiles, ...newFiles]);
-    setFilePreviews(prevPreviews => [...prevPreviews, ...newFilePreviews]);
-  };
+    const newFilePreviews = newFiles.map((file) => URL.createObjectURL(file));
+    setSelectedFiles((prevFiles) => [...prevFiles, ...newFiles]);
+    setFilePreviews((prevPreviews) => [...prevPreviews, ...newFilePreviews]);
+  }, []);
 
   const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
   const FindTargetObject = async (data, file) => {
     try {
-      const promises = objectInputs.map(obj =>
+      const promises = objectInputs.map((obj) =>
         axios.post('http://localhost:5000/find-object', {
           data,
           object: obj.object,
-          count: obj.count
+          count: obj.count,
         })
       );
-  
+
       const responses = await Promise.all(promises);
-  
+
       // Collect found objects with their counts
       const foundObjects = responses.map((response, index) => ({
         object: objectInputs[index].object,
-        count: response.data.number_of_objects_found || 0
+        count: response.data.number_of_objects_found || 0,
       }));
-  
+
       // Check if all filters are met
       const allFiltersMet = objectInputs.every((obj, index) => {
-        const foundObject = foundObjects.find(o => o.object === obj.object);
+        const foundObject = foundObjects.find((o) => o.object === obj.object);
         // If count is 0, the object should not be present at all
         if (obj.count === 0) {
           return !foundObject || foundObject.count === 0;
@@ -78,29 +111,27 @@ const UploadImages = () => {
         // Otherwise, the found count should meet or exceed the required count
         return foundObject && foundObject.count >= obj.count;
       });
-  
+
       if (allFiltersMet) {
-        setTargetResponses(prevResponses => [
+        setTargetResponses((prevResponses) => [
           ...prevResponses,
           {
             preview: URL.createObjectURL(file),
             filename: file.name,
-            objectsFound: foundObjects
-          }
+            objectsFound: foundObjects,
+          },
         ]);
       }
-  
+
     } catch (error) {
-      if (error.response) {
-        toast.error(`Error finding target object: ${error.response.data}`);
-      } else if (error.request) {
-        toast.error('No response received from the server.');
-      } else {
-        toast.error('Error setting up the request.');
-      }
+      toast.error(
+        error.response
+          ? `Error finding target object: ${error.response.data}`
+          : error.message
+      );
     }
   };
-  
+
   const handleUpload = async (file) => {
     const formData = new FormData();
     formData.append('files', file);
@@ -108,11 +139,13 @@ const UploadImages = () => {
     try {
       setUploading(true);
       const response = await axios.post('http://localhost:5000/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       await FindTargetObject(response.data, file);
     } catch (error) {
-      toast.error('Error uploading file: ' + (error.response ? error.response.data : error.message));
+      toast.error(
+        `Error uploading file: ${error.response ? error.response.data : error.message}`
+      );
     } finally {
       setUploading(false);
     }
@@ -120,21 +153,21 @@ const UploadImages = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-  
+
     if (selectedFiles.length === 0) {
       toast.error('Please select files first.');
       return;
     }
-  
+
     if (objectInputs.length === 0) {
       toast.error('Please enter at least one object.');
       return;
     }
-  
+
     setSearchPerformed(true);
     setSearchCompletion(false);
-  
-    await Promise.all(selectedFiles.map(file => handleUpload(file)));
+
+    await Promise.all(selectedFiles.map((file) => handleUpload(file)));
 
     setSearchCompletion(true);
     toast.success('All files processed successfully!');
@@ -155,11 +188,10 @@ const UploadImages = () => {
     setSelectedFiles([]);
     setFilePreviews([]);
   };
-  
+
   const handleAddObject = () => {
     const trimmedCount = currentCount.trim();
 
-    // Check if currentObject or trimmedCount is empty
     if (currentObject.trim() === '' || trimmedCount === '') {
       toast.error('Please enter both object and count.');
       return;
@@ -167,7 +199,6 @@ const UploadImages = () => {
 
     const countValue = Number(trimmedCount);
 
-    // Check if countValue is a valid number
     if (isNaN(countValue)) {
       toast.error('Count must be a valid number.');
       return;
@@ -177,7 +208,6 @@ const UploadImages = () => {
     setCurrentObject('');
     setCurrentCount('');
   };
-
 
   const handleRemoveObject = (index) => {
     const updatedObjects = [...objectInputs];
@@ -192,7 +222,7 @@ const UploadImages = () => {
       setCurrentCount(newValue);
     }
   };
-  
+
   return (
     <Box sx={{ padding: 4 }}>
       <Typography variant="h4" gutterBottom>
@@ -241,7 +271,11 @@ const UploadImages = () => {
           ))}
         </Box>
 
-        {uploading ? <CircularProgress /> : <Button variant="contained" type="submit">Find</Button>}
+        {uploading ? (
+          <CircularProgress />
+        ) : (
+          <Button variant="contained" type="submit">Find</Button>
+        )}
       </form>
 
       <Button variant="contained" color="secondary" onClick={handleRemoveAllFiles} sx={{ marginTop: 2 }}>
@@ -250,25 +284,12 @@ const UploadImages = () => {
 
       <Grid container spacing={2} sx={{ marginTop: 2 }}>
         {filePreviews.map((preview, index) => (
-          <Grid item xs={12} md={4} key={index}>
-            <Card className="response-card">
-              <CardMedia
-                component="img"
-                height="140"
-                image={preview}
-                alt={`preview-${index}`}
-                sx={{ objectFit: 'cover' }} // Ensure proper image scaling
-              />
-              <CardContent className="card-content">
-                <Typography variant="body2" noWrap>
-                  {selectedFiles[index] ? selectedFiles[index].name : 'File Removed'}
-                </Typography>
-                <Button className="remove-button" onClick={() => handleRemoveFile(index)} sx={{ marginTop: 2 }}>
-                  Remove
-                </Button>
-              </CardContent>
-            </Card>
-          </Grid>
+          <FilePreview
+            key={index}
+            preview={preview}
+            filename={selectedFiles[index]?.name || 'File Removed'}
+            onRemove={() => handleRemoveFile(index)}
+          />
         ))}
       </Grid>
 
