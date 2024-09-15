@@ -52,7 +52,6 @@ const UploadImages = () => {
 
   const FindTargetObject = async (data, file) => {
     try {
-      // Send requests for each filter
       const promises = objectInputs.map(obj =>
         axios.post('http://localhost:5000/find-object', {
           data,
@@ -60,10 +59,9 @@ const UploadImages = () => {
           count: obj.count
         })
       );
-  
+
       const responses = await Promise.all(promises);
-  
-      // Check if all filters are met
+
       const allFiltersMet = objectInputs.every((obj, index) => {
         const response = responses[index].data;
         const numberOfObjectsFound = response.number_of_objects_found || 0;
@@ -73,24 +71,29 @@ const UploadImages = () => {
           return response.found;
         }
       });
-  
-      // Only add image if all filters are met
+
       if (allFiltersMet) {
         setTargetResponses(prevResponses => [
           ...prevResponses,
           {
             preview: URL.createObjectURL(file),
             filename: file.name,
-            number_of_objects_found: responses[0].data.number_of_objects_found || 0 // Use a valid response
+            number_of_objects_found: responses[0].data.number_of_objects_found || 0
           }
         ]);
       }
       
     } catch (error) {
-      console.error("Error finding target object:", error);
+      if (error.response) {
+        toast.error(`Error finding target object: ${error.response.data}`);
+      } else if (error.request) {
+        toast.error('No response received from the server.');
+      } else {
+        toast.error('Error setting up the request.');
+      }
     }
   };
-  
+
   const handleUpload = async (file) => {
     const formData = new FormData();
     formData.append('files', file);
@@ -173,7 +176,7 @@ const UploadImages = () => {
   return (
     <Box sx={{ padding: 4 }}>
       <Typography variant="h4" gutterBottom>
-        Upload Images & Multi-Object Search
+        Multi-Object Search
       </Typography>
 
       <form onSubmit={handleSubmit}>
@@ -203,11 +206,7 @@ const UploadImages = () => {
         <Button
           variant="contained"
           onClick={handleAddObject}
-          sx={{
-            marginBottom: 2,
-            padding: '15px',
-            marginLeft: "10px"
-          }}
+          sx={{ marginBottom: 2, padding: '15px', marginLeft: "10px" }}
         >
           Add
         </Button>
@@ -222,7 +221,7 @@ const UploadImages = () => {
           ))}
         </Box>
 
-        {uploading ? <CircularProgress /> : <Button variant="contained" type="submit" >Find</Button>}
+        {uploading ? <CircularProgress /> : <Button variant="contained" type="submit">Find</Button>}
       </form>
 
       <Button variant="contained" color="secondary" onClick={handleRemoveAllFiles} sx={{ marginTop: 2 }}>
@@ -244,7 +243,7 @@ const UploadImages = () => {
                 <Typography variant="body2" noWrap>
                   {selectedFiles[index] ? selectedFiles[index].name : 'File Removed'}
                 </Typography>
-                <Button className="remove-button" onClick={() => handleRemoveFile(index)} sx={{ marginTop: 1 }}>
+                <Button className="remove-button" onClick={() => handleRemoveFile(index)} sx={{ marginTop: 2 }}>
                   Remove
                 </Button>
               </CardContent>
@@ -253,46 +252,43 @@ const UploadImages = () => {
         ))}
       </Grid>
 
-      <Box sx={{ marginTop: 4 }}>
-        {searchCompletion && targetResponses.length > 0 ? (
-          <>
-            <Typography variant="h5" gutterBottom>
-              Here are the pictures that match the filters you’ve set!:
+      {searchPerformed && !searchCompletion && (
+        <Typography variant="h6" sx={{ marginTop: 2 }}>
+          Processing your images, please wait...
+        </Typography>
+      )}
+
+      {searchPerformed && searchCompletion && (
+        <Grid container spacing={2} sx={{ marginTop: 2 }}>
+          {targetResponses.length > 0 ? (
+            targetResponses.map((response, index) => (
+              <Grid item xs={12} md={4} key={index}>
+                <Card className="response-card">
+                  <CardMedia
+                    component="img"
+                    height="140"
+                    image={response.preview}
+                    alt={`result-${index}`}
+                    sx={{ objectFit: 'cover' }}
+                  />
+                  <CardContent className="card-content">
+                    <Typography variant="body2" noWrap>
+                      {response.filename}
+                    </Typography>
+                    <Typography key={objIndex} variant="body2">
+                        {obj.object}: {obj.count}
+                      </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))
+          ) : (
+            <Typography variant="body2" sx={{ marginTop: 2 }}>
+              No images met the criteria.
             </Typography>
-            <Grid container spacing={2}>
-              {targetResponses.map((response, index) => (
-                <Grid item xs={12} md={4} key={index}>
-                  <Card>
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={response.preview}
-                      alt={`target-preview-${index}`}
-                      sx={{ objectFit: 'cover' }} // Ensure proper image scaling
-                    />
-                    <CardContent>
-                      <Typography variant="h6">{response.filename}</Typography>
-                      {response.number_of_objects_found !== undefined ? (
-                        <Typography variant="body2" color="textSecondary">
-                          {response.number_of_objects_found} objects found
-                        </Typography>
-                      ) : (
-                        <Typography variant="body2" color="textSecondary">
-                          No objects found
-                        </Typography>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </>
-        ) : searchCompletion && targetResponses.length === 0 ? (
-          <Typography variant="h6" color="textSecondary">
-            No pictures were found that match the filters you've set.
-          </Typography>
-        ) : null}
-      </Box>
+          )}
+        </Grid>
+      )}
 
       <ToastContainer />
     </Box>
