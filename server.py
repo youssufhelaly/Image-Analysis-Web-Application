@@ -11,15 +11,24 @@ CORS(app)  # Consider restricting this in production
 logging.basicConfig(level=logging.DEBUG)
 
 # Initialize the Rekognition client with environment credentials
+s3_client = boto3.client(
+    's3',
+    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+    region_name=os.getenv('AWS_REGION', 'us-west-2')  # Set your AWS region
+)
+
 rekognition_client = boto3.client(
     'rekognition',
     aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-    region_name=os.getenv('AWS_REGION', 'us-west-2')  # Default region as fallback
+    region_name='us-east-2'  # Set your AWS region
 )
+# S3 bucket name
+S3_BUCKET_NAME = 'objectrekognitionimages'
 
-@app.route('/upload', methods=['POST'])
-def upload_image():
+@app.route('/upload-and-analyze', methods=['POST'])
+def upload_and_analyze_image():
     responses = []
     if 'files' not in request.files:
         return jsonify({"msg": "No file part"}), 400
@@ -31,45 +40,44 @@ def upload_image():
             responses.append({"filename": file.filename, "msg": "No selected file"})
             continue
 
-        # Read the file into memory
-        image_bytes = file.read()
+    # Generate a unique key (name) for the file in S3, if desired
+    s3_key = file.filename  # You can modify this for unique keys
 
-        try:
-            logging.debug("Calling Rekognition API for file: %s", file.filename)
-            # Call Rekognition's detect_labels API
-            response = rekognition_client.detect_labels(
-                Image={'Bytes': image_bytes},
-                MinConfidence=80
-            )
+    try:
+        # Step 1: Upload file to S3
+        s3_client.upload_fileobj(
+            file,
+            S3_BUCKET_NAME,
+            s3_key  # S3 key (file name in S3)
+        )
+        logging.info(f"File {s3_key} uploaded to S3")
 
-            logging.info("Rekognition succeeded for file: %s", file.filename)
-            responses.append({
-                "filename": file.filename,
-                "response": response
-            })
+        # Step 2: Use Rekognition to analyze the image in S3
+        rekognition_response = rekognition_client.detect_labels(
+            Image={
+                'S3Object': {
+                    'Bucket': S3_BUCKET_NAME,
+                    'Name': s3_key
+                }
+            },
+            MinConfidence=80  # Minimum confidence level for detected labels
+        )
+        logging.info(f"Rekognition analysis for {s3_key} completed")
 
-        except boto3.exceptions.Boto3Error as e:
-            logging.error("Rekognition failed for file: %s, error: %s", file.filename, e)
-            responses.append({
-                "filename": file.filename,
-                "msg": "Error connecting to Rekognition service",
-                "error": str(e)
-            })
-        except Exception as e:
-            logging.error("Error processing image for file: %s, error: %s", file.filename, e)
-            responses.append({
-                "filename": file.filename,
-                "msg": "Error processing image",
-                "error": str(e)
-            })
+        # Return Rekognition results
+        return jsonify({
+            "msg": "File uploaded and analyzed successfully",
+            "rekognition_labels": rekognition_response['Labels']  # Detected labels
+        }), 200
 
-    return jsonify(responses), 200
-
+    except Exception as e:
+        logging.error(f"Error processing file {file.filename}: {e}")
+        return jsonify({"msg": "Error processing file", "error": str(e)}), 500
 
 @app.route('/find-object', methods=['POST'])
 def find_object():
     data = request.get_json()  # Extract the JSON data from the request
-    uploaded_data = data.get('data')  # The data returned from the upload
+    labels = data.get('data').get("rekognition_labels")  # The data returned from the upload
     target_object = data.get('object')  # The target object to search for
     min_count = data.get('count')  # Minimum number of objects required
 
@@ -78,17 +86,15 @@ def find_object():
     number_of_objects_found = 0
     target_object = target_object.lower()
 
-    for item in uploaded_data:
-        if 'response' in item:
-            labels = item['response'].get('Labels', [])
-            for label in labels:
-                if label.get('Name', '').lower() == target_object:
-                    # Count the number of instances of the target object
-                    instances = label.get('Instances', [])
-                    if (not instances):
-                        number_of_objects_found = 1
-                    else : 
-                        number_of_objects_found += len(instances)  # Increment by the number of detected instances
+
+    for label in labels:
+        if label.get('Name', '').lower() == target_object:
+            # Count the number of instances of the target object
+            instances = label.get('Instances', [])
+            if (not instances):
+                number_of_objects_found = 1
+            else : 
+                number_of_objects_found += len(instances)  # Increment by the number of detected instances
 
     if int(min_count) == 0 and number_of_objects_found == 0:
         found_target_object = False
