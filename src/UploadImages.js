@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import JSZip from 'jszip';
 import axios from 'axios';
 import {
@@ -28,8 +28,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import DeleteIcon from '@mui/icons-material/Delete';
 import './UploadImages.css';
 
-
-const FilePreview = ({ preview, filename, onRemove }) => (
+// FilePreview component remains unchanged
+const FilePreview = ({ preview, filename, onRemove, isRemovable, objectsFound }) => (
   <Grid item xs={12} md={4}>
     <Card className="response-card">
       <CardMedia
@@ -37,19 +37,31 @@ const FilePreview = ({ preview, filename, onRemove }) => (
         height="140"
         image={preview}
         alt={`preview-${filename}`}
-        sx={{ objectFit: 'cover' }} // Ensure proper image scaling
+        sx={{ objectFit: 'cover' }}
       />
       <CardContent className="card-content">
         <Typography variant="body2" noWrap>
           {filename}
         </Typography>
-        <Button className="remove-button" onClick={onRemove} sx={{ marginTop: 2 }}>
-          Remove
-        </Button>
+        {objectsFound && objectsFound.length > 0 && (
+          <Box sx={{ marginTop: 1 }}>
+            {objectsFound.map((obj, index) => (
+              <Typography key={index} variant="body2">
+                {`${obj.object.toLowerCase()}: ${obj.count} found`}
+              </Typography>
+            ))}
+          </Box>
+        )}
+        {isRemovable && (
+          <Button className="remove-button" onClick={onRemove} sx={{ marginTop: 2 }}>
+            Remove
+          </Button>
+        )}
       </CardContent>
     </Card>
   </Grid>
 );
+
 
 const UploadImages = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -62,6 +74,7 @@ const UploadImages = () => {
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [searchCompletion, setSearchCompletion] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
+
 
   const onDrop = useCallback(async (acceptedFiles) => {
     setTargetResponses([]);
@@ -104,26 +117,24 @@ const UploadImages = () => {
           count: obj.count,
         })
       );
-
+  
       const responses = await Promise.all(promises);
-
+  
       // Collect found objects with their counts
       const foundObjects = responses.map((response, index) => ({
         object: objectInputs[index].object,
         count: response.data.number_of_objects_found || 0,
       }));
-
+  
       // Check if all filters are met
       const allFiltersMet = objectInputs.every((obj, index) => {
         const foundObject = foundObjects.find((o) => o.object === obj.object);
-        // If count is 0, the object should not be present at all
         if (obj.count === 0) {
           return !foundObject || foundObject.count === 0;
         }
-        // Otherwise, the found count should meet or exceed the required count
         return foundObject && foundObject.count >= obj.count;
       });
-
+  
       if (allFiltersMet) {
         setTargetResponses((prevResponses) => [
           ...prevResponses,
@@ -134,7 +145,7 @@ const UploadImages = () => {
           },
         ]);
       }
-
+  
     } catch (error) {
       toast.error(
         error.response
@@ -142,7 +153,7 @@ const UploadImages = () => {
           : error.message
       );
     }
-  };
+  };  
 
   const handleUpload = async (file) => {
     const formData = new FormData();
@@ -150,7 +161,7 @@ const UploadImages = () => {
 
     try {
       setUploading(true);
-      const response = await axios.post('http://localhost:5000/upload', formData, {
+      const response = await axios.post('http://localhost:5000/upload-and-analyze', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       await FindTargetObject(response.data, file);
@@ -238,166 +249,144 @@ const UploadImages = () => {
 
   const handleCountChange = (e) => {
     const newValue = e.target.value;
-    // Ensure new value is not less than 0
     if (newValue >= 0) {
       setCurrentCount(newValue);
     }
   };
 
+
   return (
     <Box sx={{ padding: 15, background: 'linear-gradient(135deg, rgba(173, 216, 230, 0.5), rgba(240, 248, 255, 0.3))' }}>
-    <Typography 
-      variant="h3" // Larger size for emphasis
-      sx={{
-        fontWeight: 'bold',
-        fontSize: '3rem',  // Size adjustment
-        textAlign: 'center',  // Center the title
-        background: 'linear-gradient(90deg, #2193b0, #6dd5ed)',  // Blue gradient
-        WebkitBackgroundClip: 'text',  // Clip background to text for gradient effect
-        letterSpacing: '2px',  // Spacing for better readability
-        textShadow: '2px 2px 5px rgba(0, 0, 128, 0.4)',  // Subtle blue shadow for depth
-        paddingBottom: '10px',  // Add padding
-
-      }}
-    >
-      Multi-Object Search
-    </Typography>
-      <form onSubmit={handleSubmit}>
-        {/* Dropzone and input fields */}
-        <Box
-          {...getRootProps()}
-          sx={{ border: '2px dashed #ccc', padding: 4, textAlign: 'center', marginBottom: 2 }}
-        >
+      <Typography 
+        variant="h3"
+        sx={{
+          fontWeight: 'bold',
+          fontSize: '3rem',
+          textAlign: 'center',
+          background: 'linear-gradient(90deg, #2193b0, #6dd5ed)',
+          WebkitBackgroundClip: 'text',
+          letterSpacing: '2px',
+          color: 'transparent'
+        }}
+      >
+        Upload and Analyze Images
+      </Typography>
+      <Paper elevation={3} sx={{ padding: 4, marginTop: 4 }}>
+        <Box {...getRootProps()} sx={{ border: '2px dashed #2196F3', borderRadius: 2, padding: 4, textAlign: 'center' }}>
           <input {...getInputProps()} />
-          <Typography variant="body1">
-            Drag & drop some files here, or click to select files
+          <Typography variant="h6" gutterBottom>
+            Drag & Drop images or zip files here, or click to select files
           </Typography>
-        </Box>
-
-        {/* Object and count inputs */}
-        <TextField
-          label="Object to find"
-          value={currentObject}
-          onChange={(e) => setCurrentObject(e.target.value)}
-          sx={{ marginBottom: 2 }}
-        />
-        <TextField
-          label="Count"
-          type="number"
-          value={currentCount}
-          onChange={handleCountChange}
-          sx={{ marginBottom: 2, marginLeft: 2 }}
-        />
-        <Button
-          variant="contained"
-          onClick={handleAddObject}
-          sx={{ marginBottom: 2, padding: '15px', marginLeft: "10px" }}
-        >
-          Add
-        </Button>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', marginBottom: 2 }}>
-          {objectInputs.map((obj, index) => (
-            <Chip
-              key={index}
-              label={obj.count === 0 ? `Without ${obj.object}` : `At least ${obj.count} ${obj.object}`}
-              onDelete={() => handleRemoveObject(index)}
-              sx={{ marginRight: 1, marginBottom: 1 }}
-            />
-          ))}
-        </Box>
-
-        {/* Upload button */}
-        {uploading ? (
-          <CircularProgress />
-        ) : (
-          <Button variant="contained" type="submit">Find</Button>
-        )}
-      </form>
-
-      {/* Remove all files button */}
-      <Tooltip title="Remove All Files">
-        <IconButton
-          color="error"
-          onClick={handleRemoveAllFiles}
-          sx={{ position: 'fixed', bottom: 16, right: 16 }}
-        >
-          <DeleteIcon />
-        </IconButton>
-      </Tooltip>
-
-      {/* Remove all files confirmation dialog */}
-      <Dialog open={openDialog} onClose={cancelRemoveAllFiles}>
-        <DialogTitle>Confirm Removal</DialogTitle>
-        <DialogContent>
-          <Typography>Are you sure you want to remove all files?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={cancelRemoveAllFiles}>Cancel</Button>
-          <Button onClick={confirmRemoveAllFiles} color="error">
-            Remove All
+          <Button variant="contained" color="primary" sx={{ marginTop: 2 }}>
+            Select Files
           </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* File previews */}
-      <Grid container spacing={2} sx={{ marginTop: 2 }}>
-        {filePreviews.map((preview, index) => (
-          <FilePreview
-            key={index}
-            preview={preview}
-            filename={selectedFiles[index]?.name || 'File Removed'}
-            onRemove={() => handleRemoveFile(index)}
+        </Box>
+        <Tooltip title="Remove All Files">
+          <IconButton
+            color="error"
+            onClick={handleRemoveAllFiles}
+            sx={{ position: 'fixed', bottom: 16, right: 16 }}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Tooltip>
+        {filePreviews.length > 0 && (
+          <Grid container spacing={2} sx={{ marginTop: 2 }}>
+            {filePreviews.map((preview, index) => (
+              <FilePreview
+                key={index}
+                preview={preview}
+                filename={selectedFiles[index].name}
+                onRemove={() => handleRemoveFile(index)}
+                isRemovable={true}  // Allow removing files
+              />
+            ))}
+          </Grid>
+        )}
+        <Dialog open={openDialog} onClose={cancelRemoveAllFiles}>
+          <DialogTitle>Confirm</DialogTitle>
+          <DialogContent>
+            <Typography>Are you sure you want to remove all files?</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={cancelRemoveAllFiles}>Cancel</Button>
+            <Button onClick={confirmRemoveAllFiles} color="primary">
+              Confirm
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Box component="form" onSubmit={handleSubmit} sx={{ marginTop: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Search for Objects
+          </Typography>
+          <TextField
+            label="Object"
+            value={currentObject}
+            onChange={(e) => setCurrentObject(e.target.value)}
+            fullWidth
+            sx={{ marginBottom: 2 }}
           />
-        ))}
-      </Grid>
-
-
-      {searchPerformed && !searchCompletion && (
-        <Snackbar open autoHideDuration={6000} onClose={() => setSearchPerformed(false)}>
-          <Alert severity="info" sx={{ width: '100%' }}>
-            Processing your images, please wait...
-          </Alert>
-        </Snackbar>
-      )}
-
-
-      {/* Search results */}
-      <Grid container spacing={2} sx={{ marginTop: 2 }}>
-        {searchPerformed && searchCompletion ? (
-          targetResponses.length > 0 ? (
-            targetResponses.map((response, index) => (
-              <Grid item xs={12} md={4} key={index}>
-                <Card className="response-card">
-                  <CardMedia
-                    component="img"
-                    height="140"
-                    image={response.preview}
-                    alt={`result-${index}`}
-                    sx={{ objectFit: 'cover' }}
-                  />
-                  <CardContent className="card-content">
-                    <Typography variant="body2" noWrap>
-                      {response.filename}
-                    </Typography>
-                    {response.objectsFound.map((obj, idx) => (
-                      <Typography key={idx} variant="body2">
-                        {obj.count === 0 ? `Does not contain ${obj.object}` : `Contains ${obj.count} "${obj.object}"`}
-                      </Typography>
-                    ))}
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))
-          ) : (
-            <Grid item xs={12}>
-              <Paper elevation={3} sx={{ padding: 2, textAlign: 'center', backgroundColor: '#f8d7da', color: '#721c24' }}>
-                <Alert severity="info">No images met all the specified criteria.</Alert>
-              </Paper>
-            </Grid>
-          )
-        ) : null}
-      </Grid>
-
+          <TextField
+            label="Count"
+            type="number"
+            value={currentCount}
+            onChange={handleCountChange}
+            fullWidth
+            sx={{ marginBottom: 2 }}
+          />
+          <Button variant="contained" color="primary" onClick={handleAddObject}>
+            Add Object
+          </Button>
+          <Box sx={{ marginTop: 2 }}>
+            {objectInputs.map((obj, index) => (
+              <Chip
+                key={index}
+                label={`${obj.object} (Count: ${obj.count})`}
+                onDelete={() => handleRemoveObject(index)}
+                sx={{ marginRight: 1, marginBottom: 1 }}
+              />
+            ))}
+          </Box>
+          <Button
+            type="submit"
+            variant="contained"
+            color="secondary"
+            disabled={uploading || objectInputs.length === 0 || filePreviews.length === 0 }
+            sx={{ marginTop: 2 }}
+          >
+            {uploading ? <CircularProgress size={24} /> : 'Upload and Analyze'}
+          </Button>
+        </Box>
+      </Paper>
+      {searchPerformed && searchCompletion && targetResponses.length > 0 ? (
+  <Paper elevation={3} sx={{ padding: 4, marginTop: 4 }}>
+    <Typography variant="h6" gutterBottom>
+      Search Results
+    </Typography>
+    <Grid container spacing={2}>
+      {targetResponses.map((response, index) => (
+        <FilePreview
+          key={index}
+          preview={response.preview}
+          filename={response.filename}
+          objectsFound={response.objectsFound} // Pass the objectsFound prop
+          isRemovable={false}  // Do not allow removing search results
+        />
+      ))}
+    </Grid>
+  </Paper>
+) : (
+  <Paper elevation={3} sx={{ padding: 4, marginTop: 4 }}>
+    <Typography variant="h6" gutterBottom>
+      No Results
+    </Typography>
+    <Typography variant="body2">
+      {searchPerformed && searchCompletion
+        ? 'No images matched the search criteria.'
+        : 'Please perform a search to see results.'}
+    </Typography>
+  </Paper>
+)}
       <ToastContainer />
     </Box>
   );
