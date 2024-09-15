@@ -155,16 +155,29 @@ const UploadImages = () => {
     setSelectedFiles([]);
     setFilePreviews([]);
   };
-
+  
   const handleAddObject = () => {
-    if (currentObject && currentCount >= 0) {
-      setObjectInputs([...objectInputs, { object: currentObject, count: currentCount }]);
-      setCurrentObject('');
-      setCurrentCount('');
-    } else {
+    const trimmedCount = currentCount.trim();
+
+    // Check if currentObject or trimmedCount is empty
+    if (currentObject.trim() === '' || trimmedCount === '') {
       toast.error('Please enter both object and count.');
+      return;
     }
+
+    const countValue = Number(trimmedCount);
+
+    // Check if countValue is a valid number
+    if (isNaN(countValue)) {
+      toast.error('Count must be a valid number.');
+      return;
+    }
+
+    setObjectInputs([...objectInputs, { object: currentObject.trim(), count: countValue }]);
+    setCurrentObject('');
+    setCurrentCount('');
   };
+
 
   const handleRemoveObject = (index) => {
     const updatedObjects = [...objectInputs];
@@ -173,7 +186,7 @@ const UploadImages = () => {
   };
 
   const handleCountChange = (e) => {
-    const newValue = Number(e.target.value);
+    const newValue = e.target.value;
     // Ensure new value is not less than 0
     if (newValue >= 0) {
       setCurrentCount(newValue);
