@@ -7,11 +7,6 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './UploadImages.css'; // Import CSS for additional styling
 
-/**
- * UploadImages Component
- * Handles image file uploads, provides drag-and-drop functionality,
- * searches for objects within the uploaded images, and displays previews and results.
- */
 const UploadImages = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -57,41 +52,46 @@ const UploadImages = () => {
 
   const FindTargetObject = async (data, file) => {
     try {
-      // Create an array of promises for each object search
       const promises = objectInputs.map(obj =>
         axios.post('http://localhost:5000/find-object', {
           data,
-          object: obj.object,  // Single object for this request
-          count: obj.count     // Expected count for this object
+          object: obj.object,
+          count: obj.count
         })
       );
   
-      // Await all promises to complete
       const responses = await Promise.all(promises);
-      // Process each response and update targetResponses
-      const newResponses = responses.map((response, index) => {
-        // Ensure there's always a valid structure
-        return {
-          filename: file.name,
-          preview: URL.createObjectURL(file),
-          object: objectInputs[index].object,
-          number_of_objects_found: response.data.number_of_objects_found || 0, // Default to 0 if not found
-          found: response.data.found || false,
-        };
-      });
   
-      // Append new responses to the existing targetResponses state
+      const newResponses = responses.map((response, index) => {
+        const obj = objectInputs[index];
+        const numberOfObjectsFound = response.data.number_of_objects_found || 0;
+  
+        let includeImage = false;
+        if (parseInt(obj.count) === 0) {
+          includeImage = !response.data.found;
+        } else {
+          includeImage = response.data.found;
+        }
+  
+        if (includeImage) {
+          return {
+            preview: URL.createObjectURL(file), // Ensure preview is included
+            filename: file.name,
+            number_of_objects_found: numberOfObjectsFound
+          };
+        }
+        return null;
+      }).filter(response => response !== null);
+  
       setTargetResponses(prevResponses => [
         ...prevResponses,
         ...newResponses
       ]);
+  
     } catch (error) {
       console.error("Error finding target object:", error);
     }
   };
-  
-  
-  
 
   const handleUpload = async (file) => {
     const formData = new FormData();
@@ -109,6 +109,7 @@ const UploadImages = () => {
       setUploading(false);
     }
   };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
   
@@ -132,7 +133,6 @@ const UploadImages = () => {
     setSelectedFiles([]);
     setFilePreviews([]);
   };
-  
 
   const handleRemoveFile = (index) => {
     const updatedFiles = [...selectedFiles];
@@ -181,7 +181,6 @@ const UploadImages = () => {
           </Typography>
         </Box>
 
-        {/* Input for adding objects and specifying counts */}
         <TextField
           label="Object to find"
           value={currentObject}
@@ -195,16 +194,15 @@ const UploadImages = () => {
           onChange={(e) => setCurrentCount(e.target.value)}
           sx={{ marginBottom: 2, marginLeft: 2 }}
         />
-        <Button variant="contained" onClick={handleAddObject} sx={{ marginBottom: 2 }}>
-          Add Object
+        <Button className="Add" variant="contained" onClick={handleAddObject} sx={{ marginBottom: 2 }}>
+          Add
         </Button>
 
-        {/* Chips for displaying objects and their counts */}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', marginBottom: 2 }}>
           {objectInputs.map((obj, index) => (
             <Chip
               key={index}
-              label={`At least ${obj.count} ${obj.object}`}
+              label={obj.count == 0 ? `Without ${obj.object}` : `At least ${obj.count} ${obj.object}`}
               onDelete={() => handleRemoveObject(index)}
               sx={{ marginRight: 1, marginBottom: 1 }}
             />
@@ -227,6 +225,7 @@ const UploadImages = () => {
                 height="140"
                 image={preview}
                 alt={`preview-${index}`}
+                sx={{ objectFit: 'cover' }} // Ensure proper image scaling
               />
               <CardContent className="card-content">
                 <Typography variant="body2" noWrap>
@@ -242,47 +241,43 @@ const UploadImages = () => {
       </Grid>
 
       <Box sx={{ marginTop: 4 }}>
-        {searchCompletion ? (
-          targetResponses ? (
-            <>
-              <Typography variant="h5" gutterBottom>
-                Pictures with the desired Objects:
-              </Typography>
-              <Grid container spacing={2}>
-                {targetResponses.map((response, index) => (
-                  <Grid item xs={12} md={4} key={index}>
-                    <Card>
-                      <CardMedia
-                        component="img"
-                        height="140"
-                        image={response.preview}
-                        alt={`target-preview-${index}`}
-                      />
-                      <CardContent>
-                        <Typography variant="h6">{response.filename}</Typography>
-
-                        {response.number_of_objects_found !== undefined ? (
-                          <Typography variant="body2" color="textSecondary">
-                            {response.number_of_objects_found} objects found
-                          </Typography>
-                        ) : (
-                          <Typography variant="body2" color="textSecondary">
-                            No objects found
-                          </Typography>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            </>
-          ) : (
-            searchCompletion && (
-              <Typography variant="h6" color="textSecondary">
-                No pictures were found with the target objects
-              </Typography>
-            )
-          )
+        {searchCompletion && targetResponses.length > 0 ? (
+          <>
+            <Typography variant="h5" gutterBottom>
+              Here are the pictures that match the filters you’ve set!:
+            </Typography>
+            <Grid container spacing={2}>
+              {targetResponses.map((response, index) => (
+                <Grid item xs={12} md={4} key={index}>
+                  <Card>
+                    <CardMedia
+                      component="img"
+                      height="140"
+                      image={response.preview}
+                      alt={`target-preview-${index}`}
+                      sx={{ objectFit: 'cover' }} // Ensure proper image scaling
+                    />
+                    <CardContent>
+                      <Typography variant="h6">{response.filename}</Typography>
+                      {response.number_of_objects_found !== undefined ? (
+                        <Typography variant="body2" color="textSecondary">
+                          {response.number_of_objects_found} objects found
+                        </Typography>
+                      ) : (
+                        <Typography variant="body2" color="textSecondary">
+                          No objects found
+                        </Typography>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </>
+        ) : searchCompletion && targetResponses.length === 0 ? (
+          <Typography variant="h6" color="textSecondary">
+            No pictures were found that match the filters you've set.
+          </Typography>
         ) : null}
       </Box>
 
