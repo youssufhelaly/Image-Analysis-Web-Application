@@ -73,8 +73,6 @@ def find_object():
     target_object = data.get('object')  # The target object to search for
     min_count = data.get('count')  # Minimum number of objects required
 
-    if not target_object or not min_count or not uploaded_data:
-        return jsonify({'error': 'Missing data, object, or count in request'}), 400
 
     found_target_object = False
     number_of_objects_found = 0
@@ -87,7 +85,7 @@ def find_object():
                 if label.get('Name', '').lower() == target_object:
                     # Count the number of instances of the target object
                     instances = label.get('Instances', [])
-                    if (instances == 0):
+                    if (not instances):
                         number_of_objects_found = 1
                     else : 
                         number_of_objects_found += len(instances)  # Increment by the number of detected instances
