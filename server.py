@@ -1,9 +1,11 @@
+import ast
+import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import boto3
 import logging
-from database import init_db, save_analysis_results
+from database import file_exists, get_analysis_results, init_db, save_analysis_results
 
 app = Flask(__name__)
 CORS(app)  # Consider restricting this in production
@@ -41,10 +43,29 @@ def upload_and_analyze_image():
             responses.append({"filename": file.filename, "msg": "No selected file"})
             continue
 
+        if file_exists(file.filename):
+            # Retrieve existing results if the file is already in the database
+            existing_results = get_analysis_results(file.filename)
+            responses.append({
+                "filename": file.filename,
+                "msg": "File already analyzed",
+                "results": existing_results
+            })
+            continue
+
+        # Generate a unique key (name) for the file in S3, if desired
         s3_key = file.filename
 
         try:
-            s3_client.upload_fileobj(file, S3_BUCKET_NAME, s3_key)
+            # Step 1: Upload file to S3
+            s3_client.upload_fileobj(
+                file,
+                S3_BUCKET_NAME,
+                s3_key
+            )
+            logging.info(f"File {s3_key} uploaded to S3")
+
+            # Step 2: Use Rekognition to analyze the image in S3
             rekognition_response = rekognition_client.detect_labels(
                 Image={
                     'S3Object': {
@@ -54,24 +75,30 @@ def upload_and_analyze_image():
                 },
                 MinConfidence=80
             )
+            logging.info(f"Rekognition analysis for {s3_key} completed")
 
-            # Save results in the database
-            save_analysis_results(s3_key, rekognition_response['Labels'])
+            # Save the analysis results to the database
+            save_analysis_results(file.filename, rekognition_response['Labels'])
 
+            # Return Rekognition results
             responses.append({
-                "filename": s3_key,
+                "filename": file.filename,
+                "msg": "File uploaded and analyzed successfully",
                 "rekognition_labels": rekognition_response['Labels']
             })
 
         except Exception as e:
+            logging.error(f"Error processing file {file.filename}: {e}")
             responses.append({"filename": file.filename, "msg": "Error processing file", "error": str(e)})
 
     return jsonify(responses), 200
 
+
 @app.route('/find-object', methods=['POST'])
 def find_object():
     data = request.get_json()  # Extract the JSON data from the request
-    labels = data.get('data')[0].get("rekognition_labels")# The data returned from the upload
+    response = data.get('data')[0].get("results")
+    # The data returned from the upload
     target_object = data.get('object')  # The target object to search for
     min_count = data.get('count')  # Minimum number of objects required
 
@@ -80,7 +107,10 @@ def find_object():
     number_of_objects_found = 0
     target_object = target_object.lower()
 
+    labels = response[0][2]
+    labels= labels[1:len(labels)-1]
 
+    labels = data = ast.literal_eval(labels)
     for label in labels:
         if label.get('Name', '').lower() == target_object:
             # Count the number of instances of the target object
