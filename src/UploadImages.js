@@ -52,6 +52,7 @@ const UploadImages = () => {
 
   const FindTargetObject = async (data, file) => {
     try {
+      // Send requests for each filter
       const promises = objectInputs.map(obj =>
         axios.post('http://localhost:5000/find-object', {
           data,
@@ -62,37 +63,34 @@ const UploadImages = () => {
   
       const responses = await Promise.all(promises);
   
-      const newResponses = responses.map((response, index) => {
-        const obj = objectInputs[index];
-        const numberOfObjectsFound = response.data.number_of_objects_found || 0;
-  
-        let includeImage = false;
+      // Check if all filters are met
+      const allFiltersMet = objectInputs.every((obj, index) => {
+        const response = responses[index].data;
+        const numberOfObjectsFound = response.number_of_objects_found || 0;
         if (parseInt(obj.count) === 0) {
-          includeImage = !response.data.found;
+          return !response.found;
         } else {
-          includeImage = response.data.found;
+          return response.found;
         }
+      });
   
-        if (includeImage) {
-          return {
-            preview: URL.createObjectURL(file), // Ensure preview is included
+      // Only add image if all filters are met
+      if (allFiltersMet) {
+        setTargetResponses(prevResponses => [
+          ...prevResponses,
+          {
+            preview: URL.createObjectURL(file),
             filename: file.name,
-            number_of_objects_found: numberOfObjectsFound
-          };
-        }
-        return null;
-      }).filter(response => response !== null);
-  
-      setTargetResponses(prevResponses => [
-        ...prevResponses,
-        ...newResponses
-      ]);
-  
+            number_of_objects_found: responses[0].data.number_of_objects_found || 0 // Use a valid response
+          }
+        ]);
+      }
+      
     } catch (error) {
       console.error("Error finding target object:", error);
     }
   };
-
+  
   const handleUpload = async (file) => {
     const formData = new FormData();
     formData.append('files', file);
