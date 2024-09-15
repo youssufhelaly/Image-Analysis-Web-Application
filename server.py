@@ -87,9 +87,12 @@ def find_object():
                 if label.get('Name', '').lower() == target_object:
                     # Count the number of instances of the target object
                     instances = label.get('Instances', [])
-                    number_of_objects_found += len(instances)  # Increment by the number of detected instances
+                    if (instances == 0):
+                        number_of_objects_found = 1
+                    else : 
+                        number_of_objects_found += len(instances)  # Increment by the number of detected instances
 
-    if int(min_count) == 0 and number_of_objects_found > 0:
+    if int(min_count) == 0 and number_of_objects_found == 0:
         found_target_object = False
     elif number_of_objects_found < int(min_count):
         found_target_object = False
