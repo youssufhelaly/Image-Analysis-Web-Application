@@ -85,14 +85,19 @@ def find_object():
             labels = item['response'].get('Labels', [])
             for label in labels:
                 if label.get('Name', '').lower() == target_object:
-                    found_target_object = True
-                    number_of_objects_found += 1
-                    break
-    
-    if (number_of_objects_found < int(min_count)):
+                    # Count the number of instances of the target object
+                    instances = label.get('Instances', [])
+                    number_of_objects_found += len(instances)  # Increment by the number of detected instances
+
+    if int(min_count) == 0 and number_of_objects_found > 0:
         found_target_object = False
+    elif number_of_objects_found < int(min_count):
+        found_target_object = False
+    else:
+        found_target_object = True
 
     return jsonify({'found': found_target_object, 'number_of_objects_found': number_of_objects_found})
+
 
 
 
