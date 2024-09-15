@@ -59,30 +59,37 @@ const UploadImages = () => {
           count: obj.count
         })
       );
-
+  
       const responses = await Promise.all(promises);
-
+  
+      // Collect found objects with their counts
+      const foundObjects = responses.map((response, index) => ({
+        object: objectInputs[index].object,
+        count: response.data.number_of_objects_found || 0
+      }));
+  
+      // Check if all filters are met
       const allFiltersMet = objectInputs.every((obj, index) => {
-        const response = responses[index].data;
-        const numberOfObjectsFound = response.number_of_objects_found || 0;
-        if (parseInt(obj.count) === 0) {
-          return !response.found;
-        } else {
-          return response.found;
+        const foundObject = foundObjects.find(o => o.object === obj.object);
+        // If count is 0, the object should not be present at all
+        if (obj.count === 0) {
+          return !foundObject || foundObject.count === 0;
         }
+        // Otherwise, the found count should meet or exceed the required count
+        return foundObject && foundObject.count >= obj.count;
       });
-
+  
       if (allFiltersMet) {
         setTargetResponses(prevResponses => [
           ...prevResponses,
           {
             preview: URL.createObjectURL(file),
             filename: file.name,
-            number_of_objects_found: responses[0].data.number_of_objects_found || 0
+            objectsFound: foundObjects
           }
         ]);
       }
-      
+  
     } catch (error) {
       if (error.response) {
         toast.error(`Error finding target object: ${error.response.data}`);
@@ -93,7 +100,7 @@ const UploadImages = () => {
       }
     }
   };
-
+  
   const handleUpload = async (file) => {
     const formData = new FormData();
     formData.append('files', file);
@@ -214,7 +221,7 @@ const UploadImages = () => {
           {objectInputs.map((obj, index) => (
             <Chip
               key={index}
-              label={obj.count == 0 ? `Without ${obj.object}` : `At least ${obj.count} ${obj.object}`}
+              label={obj.count === 0 ? `Without ${obj.object}` : `At least ${obj.count} ${obj.object}`}
               onDelete={() => handleRemoveObject(index)}
               sx={{ marginRight: 1, marginBottom: 1 }}
             />
@@ -258,9 +265,9 @@ const UploadImages = () => {
         </Typography>
       )}
 
-      {searchPerformed && searchCompletion && (
-        <Grid container spacing={2} sx={{ marginTop: 2 }}>
-          {targetResponses.length > 0 ? (
+      <Grid container spacing={2} sx={{ marginTop: 2 }}>
+        {searchPerformed && searchCompletion && (
+          targetResponses.length > 0 ? (
             targetResponses.map((response, index) => (
               <Grid item xs={12} md={4} key={index}>
                 <Card className="response-card">
@@ -275,9 +282,11 @@ const UploadImages = () => {
                     <Typography variant="body2" noWrap>
                       {response.filename}
                     </Typography>
-                    <Typography key={objIndex} variant="body2">
-                        {obj.object}: {obj.count}
+                    {response.objectsFound.map((obj, idx) => (
+                      <Typography key={idx} variant="body2">
+                        {obj.count === 0 ? `Does not contain ${obj.object}` : `Contains ${obj.count} "${obj.object}"`}
                       </Typography>
+                    ))}
                   </CardContent>
                 </Card>
               </Grid>
@@ -286,10 +295,9 @@ const UploadImages = () => {
             <Typography variant="body2" sx={{ marginTop: 2 }}>
               No images met the criteria.
             </Typography>
-          )}
-        </Grid>
-      )}
-
+          )
+        )}
+      </Grid>
       <ToastContainer />
     </Box>
   );
