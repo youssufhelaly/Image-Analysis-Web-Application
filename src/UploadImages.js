@@ -58,7 +58,7 @@ const UploadImages = () => {
   const FindTargetObject = async (data, file) => {
     try {
       // Create an array of promises for each object search
-      const promises = objectInputs.map(obj => 
+      const promises = objectInputs.map(obj =>
         axios.post('http://localhost:5000/find-object', {
           data,
           object: obj.object,  // Single object for this request
@@ -68,35 +68,28 @@ const UploadImages = () => {
   
       // Await all promises to complete
       const responses = await Promise.all(promises);
-  
       // Process each response and update targetResponses
       const newResponses = responses.map((response, index) => {
-        if (response.data.found) {
-          return { 
-            filename: file.name, 
-            responseData: response.data, 
-            preview: URL.createObjectURL(file), 
-            number_of_objects_found: response.data.number_of_objects_found 
-          };
-        } else {
-          return { 
-            filename: file.name, 
-            msg: `Object ${objectInputs[index].object} not found` 
-          };
-        }
+        // Ensure there's always a valid structure
+        return {
+          filename: file.name,
+          preview: URL.createObjectURL(file),
+          object: objectInputs[index].object,
+          number_of_objects_found: response.data.number_of_objects_found || 0, // Default to 0 if not found
+          found: response.data.found || false,
+        };
       });
   
+      // Append new responses to the existing targetResponses state
       setTargetResponses(prevResponses => [
         ...prevResponses,
         ...newResponses
       ]);
     } catch (error) {
-      setTargetResponses(prevResponses => [
-        ...prevResponses,
-        { filename: file.name, msg: "Error finding target object: " + (error.response ? error.response.data : error.message) }
-      ]);
+      console.error("Error finding target object:", error);
     }
   };
+  
   
   
 
@@ -156,7 +149,7 @@ const UploadImages = () => {
   };
 
   const handleAddObject = () => {
-    if (currentObject && currentCount > 0) {
+    if (currentObject && currentCount >= 0) {
       setObjectInputs([...objectInputs, { object: currentObject, count: currentCount }]);
       setCurrentObject('');
       setCurrentCount('');
@@ -249,7 +242,7 @@ const UploadImages = () => {
       </Grid>
 
       <Box sx={{ marginTop: 4 }}>
-        {searchPerformed ? (
+        {searchCompletion ? (
           targetResponses ? (
             <>
               <Typography variant="h5" gutterBottom>
