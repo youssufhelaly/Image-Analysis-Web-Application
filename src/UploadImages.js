@@ -12,10 +12,17 @@ import {
   CardMedia,
   CardContent,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import { useDropzone } from 'react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import DeleteIcon from '@mui/icons-material/Delete';
 import './UploadImages.css'; // Import CSS for additional styling
 
 const FilePreview = ({ preview, filename, onRemove }) => (
@@ -50,6 +57,7 @@ const UploadImages = () => {
   const [targetResponses, setTargetResponses] = useState([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [searchCompletion, setSearchCompletion] = useState(false);
+  const [openDialog, setOpenDialog] = useState(false);
 
   const onDrop = useCallback(async (acceptedFiles) => {
     setTargetResponses([]);
@@ -185,8 +193,17 @@ const UploadImages = () => {
   };
 
   const handleRemoveAllFiles = () => {
+    setOpenDialog(true);
+  };
+
+  const confirmRemoveAllFiles = () => {
     setSelectedFiles([]);
     setFilePreviews([]);
+    setOpenDialog(false);
+  };
+
+  const cancelRemoveAllFiles = () => {
+    setOpenDialog(false);
   };
 
   const handleAddObject = () => {
@@ -278,9 +295,28 @@ const UploadImages = () => {
         )}
       </form>
 
-      <Button variant="contained" color="secondary" onClick={handleRemoveAllFiles} sx={{ marginTop: 2 }}>
-        Remove All
-      </Button>
+      <Tooltip title="Remove All Files">
+        <IconButton
+          color="error"
+          onClick={handleRemoveAllFiles}
+          sx={{ position: 'fixed', bottom: 16, right: 16 }}
+        >
+          <DeleteIcon />
+        </IconButton>
+      </Tooltip>
+
+      <Dialog open={openDialog} onClose={cancelRemoveAllFiles}>
+        <DialogTitle>Confirm Removal</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to remove all files?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelRemoveAllFiles}>Cancel</Button>
+          <Button onClick={confirmRemoveAllFiles} color="error">
+            Remove All
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Grid container spacing={2} sx={{ marginTop: 2 }}>
         {filePreviews.map((preview, index) => (
