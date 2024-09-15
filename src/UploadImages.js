@@ -18,12 +18,16 @@ import {
   DialogTitle,
   IconButton,
   Tooltip,
+  Paper,
+  Alert,
+  Snackbar
 } from '@mui/material';
 import { useDropzone } from 'react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import DeleteIcon from '@mui/icons-material/Delete';
-import './UploadImages.css'; // Import CSS for additional styling
+import './UploadImages.css';
+
 
 const FilePreview = ({ preview, filename, onRemove }) => (
   <Grid item xs={12} md={4}>
@@ -241,12 +245,25 @@ const UploadImages = () => {
   };
 
   return (
-    <Box sx={{ padding: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Multi-Object Search
-      </Typography>
+    <Box sx={{ padding: 15, background: 'linear-gradient(135deg, rgba(173, 216, 230, 0.5), rgba(240, 248, 255, 0.3))' }}>
+    <Typography 
+      variant="h3" // Larger size for emphasis
+      sx={{
+        fontWeight: 'bold',
+        fontSize: '3rem',  // Size adjustment
+        textAlign: 'center',  // Center the title
+        background: 'linear-gradient(90deg, #2193b0, #6dd5ed)',  // Blue gradient
+        WebkitBackgroundClip: 'text',  // Clip background to text for gradient effect
+        letterSpacing: '2px',  // Spacing for better readability
+        textShadow: '2px 2px 5px rgba(0, 0, 128, 0.4)',  // Subtle blue shadow for depth
+        paddingBottom: '10px',  // Add padding
 
+      }}
+    >
+      Multi-Object Search
+    </Typography>
       <form onSubmit={handleSubmit}>
+        {/* Dropzone and input fields */}
         <Box
           {...getRootProps()}
           sx={{ border: '2px dashed #ccc', padding: 4, textAlign: 'center', marginBottom: 2 }}
@@ -257,6 +274,7 @@ const UploadImages = () => {
           </Typography>
         </Box>
 
+        {/* Object and count inputs */}
         <TextField
           label="Object to find"
           value={currentObject}
@@ -288,6 +306,7 @@ const UploadImages = () => {
           ))}
         </Box>
 
+        {/* Upload button */}
         {uploading ? (
           <CircularProgress />
         ) : (
@@ -295,6 +314,7 @@ const UploadImages = () => {
         )}
       </form>
 
+      {/* Remove all files button */}
       <Tooltip title="Remove All Files">
         <IconButton
           color="error"
@@ -305,6 +325,7 @@ const UploadImages = () => {
         </IconButton>
       </Tooltip>
 
+      {/* Remove all files confirmation dialog */}
       <Dialog open={openDialog} onClose={cancelRemoveAllFiles}>
         <DialogTitle>Confirm Removal</DialogTitle>
         <DialogContent>
@@ -318,6 +339,7 @@ const UploadImages = () => {
         </DialogActions>
       </Dialog>
 
+      {/* File previews */}
       <Grid container spacing={2} sx={{ marginTop: 2 }}>
         {filePreviews.map((preview, index) => (
           <FilePreview
@@ -329,14 +351,19 @@ const UploadImages = () => {
         ))}
       </Grid>
 
+
       {searchPerformed && !searchCompletion && (
-        <Typography variant="h6" sx={{ marginTop: 2 }}>
-          Processing your images, please wait...
-        </Typography>
+        <Snackbar open autoHideDuration={6000} onClose={() => setSearchPerformed(false)}>
+          <Alert severity="info" sx={{ width: '100%' }}>
+            Processing your images, please wait...
+          </Alert>
+        </Snackbar>
       )}
 
+
+      {/* Search results */}
       <Grid container spacing={2} sx={{ marginTop: 2 }}>
-        {searchPerformed && searchCompletion && (
+        {searchPerformed && searchCompletion ? (
           targetResponses.length > 0 ? (
             targetResponses.map((response, index) => (
               <Grid item xs={12} md={4} key={index}>
@@ -362,12 +389,15 @@ const UploadImages = () => {
               </Grid>
             ))
           ) : (
-            <Typography variant="body2" sx={{ marginTop: 2 }}>
-              No images met the criteria.
-            </Typography>
+            <Grid item xs={12}>
+              <Paper elevation={3} sx={{ padding: 2, textAlign: 'center', backgroundColor: '#f8d7da', color: '#721c24' }}>
+                <Alert severity="info">No images met all the specified criteria.</Alert>
+              </Paper>
+            </Grid>
           )
-        )}
+        ) : null}
       </Grid>
+
       <ToastContainer />
     </Box>
   );
