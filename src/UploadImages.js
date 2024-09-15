@@ -57,33 +57,39 @@ const UploadImages = () => {
 
   const FindTargetObject = async (data, file) => {
     try {
-      for (const obj of objectInputs) {
-        const response = await axios.post('http://localhost:5000/find-object', {
+      // Create an array of promises for each object search
+      const promises = objectInputs.map(obj => 
+        axios.post('http://localhost:5000/find-object', {
           data,
           object: obj.object,  // Single object for this request
           count: obj.count     // Expected count for this object
-        });
+        })
+      );
   
+      // Await all promises to complete
+      const responses = await Promise.all(promises);
+  
+      // Process each response and update targetResponses
+      const newResponses = responses.map((response, index) => {
         if (response.data.found) {
-          setTargetResponses(prevResponses => [
-            ...prevResponses,
-            { 
-              filename: file.name, 
-              responseData: response.data, 
-              preview: URL.createObjectURL(file), 
-              number_of_objects_found: response.data.number_of_objects_found 
-            }
-          ]);
+          return { 
+            filename: file.name, 
+            responseData: response.data, 
+            preview: URL.createObjectURL(file), 
+            number_of_objects_found: response.data.number_of_objects_found 
+          };
         } else {
-          setTargetResponses(prevResponses => [
-            ...prevResponses,
-            { 
-              filename: file.name, 
-              msg: `Object ${obj.object} not found` 
-            }
-          ]);
+          return { 
+            filename: file.name, 
+            msg: `Object ${objectInputs[index].object} not found` 
+          };
         }
-      }
+      });
+  
+      setTargetResponses(prevResponses => [
+        ...prevResponses,
+        ...newResponses
+      ]);
     } catch (error) {
       setTargetResponses(prevResponses => [
         ...prevResponses,
@@ -91,6 +97,7 @@ const UploadImages = () => {
       ]);
     }
   };
+  
   
 
   const handleUpload = async (file) => {
@@ -243,7 +250,7 @@ const UploadImages = () => {
 
       <Box sx={{ marginTop: 4 }}>
         {searchPerformed ? (
-          targetResponses.found == true ? (
+          targetResponses ? (
             <>
               <Typography variant="h5" gutterBottom>
                 Pictures with the desired Objects:
