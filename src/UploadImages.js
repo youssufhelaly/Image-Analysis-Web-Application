@@ -162,6 +162,14 @@ const UploadImages = () => {
     setObjectInputs(updatedObjects);
   };
 
+  const handleCountChange = (e) => {
+    const newValue = Number(e.target.value);
+    // Ensure new value is not less than 0
+    if (newValue >= 0) {
+      setCurrentCount(newValue);
+    }
+  };
+  
   return (
     <Box sx={{ padding: 4 }}>
       <Typography variant="h4" gutterBottom>
@@ -189,13 +197,20 @@ const UploadImages = () => {
           label="Count"
           type="number"
           value={currentCount}
-          onChange={(e) => setCurrentCount(e.target.value)}
+          onChange={handleCountChange}
           sx={{ marginBottom: 2, marginLeft: 2 }}
         />
-        <Button className="Add" variant="contained" onClick={handleAddObject} sx={{ marginBottom: 2 }}>
+        <Button
+          variant="contained"
+          onClick={handleAddObject}
+          sx={{
+            marginBottom: 2,
+            padding: '15px',
+            marginLeft: "10px"
+          }}
+        >
           Add
         </Button>
-
         <Box sx={{ display: 'flex', flexWrap: 'wrap', marginBottom: 2 }}>
           {objectInputs.map((obj, index) => (
             <Chip
@@ -207,7 +222,7 @@ const UploadImages = () => {
           ))}
         </Box>
 
-        {uploading ? <CircularProgress /> : <Button variant="contained" type="submit">Find</Button>}
+        {uploading ? <CircularProgress /> : <Button variant="contained" type="submit" >Find</Button>}
       </form>
 
       <Button variant="contained" color="secondary" onClick={handleRemoveAllFiles} sx={{ marginTop: 2 }}>
