@@ -1,12 +1,26 @@
 import React from 'react';
-import UploadImages from './UploadImages';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import LoginForm from './LoginForm';
+import UploadImages from './UploadImages'; // Ensure UploadImages is imported
+import ProtectedRoute from './ProtectedRoute'; // Ensure ProtectedRoute is defined
 
-function App() {
+const App = () => {
   return (
-    <div className="App">
-      <UploadImages />
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/login" element={<LoginForm />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route
+          path="/upload"
+          element={
+            <ProtectedRoute>
+              <UploadImages />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Router>
   );
-}
+};
 
 export default App;
