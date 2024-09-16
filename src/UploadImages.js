@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import JSZip from 'jszip';
 import axios from 'axios';
 import {
@@ -19,8 +19,6 @@ import {
   IconButton,
   Tooltip,
   Paper,
-  Alert,
-  Snackbar
 } from '@mui/material';
 import { useDropzone } from 'react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
@@ -62,7 +60,6 @@ const FilePreview = ({ preview, filename, onRemove, isRemovable, objectsFound })
   </Grid>
 );
 
-
 const UploadImages = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -74,7 +71,6 @@ const UploadImages = () => {
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [searchCompletion, setSearchCompletion] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
-
 
   const onDrop = useCallback(async (acceptedFiles) => {
     setTargetResponses([]);
@@ -109,23 +105,27 @@ const UploadImages = () => {
   const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
   const FindTargetObject = async (data, file) => {
+    const token = localStorage.getItem('authToken'); // Retrieve token from localStorage
+
     try {
       const promises = objectInputs.map((obj) =>
         axios.post('http://localhost:5000/find-object', {
           data,
           object: obj.object,
           count: obj.count,
+        }, {
+          headers: { 'Authorization': `Bearer ${token}` } // Add Authorization header
         })
       );
-  
+
       const responses = await Promise.all(promises);
-  
+
       // Collect found objects with their counts
       const foundObjects = responses.map((response, index) => ({
         object: objectInputs[index].object,
         count: response.data.number_of_objects_found || 0,
       }));
-  
+
       // Check if all filters are met
       const allFiltersMet = objectInputs.every((obj, index) => {
         const foundObject = foundObjects.find((o) => o.object === obj.object);
@@ -134,7 +134,7 @@ const UploadImages = () => {
         }
         return foundObject && foundObject.count >= obj.count;
       });
-  
+
       if (allFiltersMet) {
         setTargetResponses((prevResponses) => [
           ...prevResponses,
@@ -145,7 +145,7 @@ const UploadImages = () => {
           },
         ]);
       }
-  
+
     } catch (error) {
       toast.error(
         error.response
@@ -153,16 +153,21 @@ const UploadImages = () => {
           : error.message
       );
     }
-  };  
+  };
 
   const handleUpload = async (file) => {
     const formData = new FormData();
     formData.append('files', file);
 
+    const token = localStorage.getItem('authToken'); // Retrieve token from localStorage
+
     try {
       setUploading(true);
       const response = await axios.post('http://localhost:5000/upload-and-analyze', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}` // Add Authorization header
+        },
       });
       await FindTargetObject(response.data, file);
     } catch (error) {
