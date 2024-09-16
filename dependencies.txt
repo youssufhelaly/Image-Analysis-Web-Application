@@ -1,8 +1,7 @@
-# include this file by running the following from the command line:
-#    pip install -r dependencies.txt
-Flask
-flask-cors
-flask-jwt-extended
-requests
-#npm install axios
-boto3
+Flask==2.3.0
+Flask-JWT-Extended==4.5.0
+Flask-Cors==3.1.2
+Flask-SQLAlchemy==3.0.0
+Flask-Login==0.6.2
+Flask-Bcrypt==1.0.1
+boto3==1.26.0
