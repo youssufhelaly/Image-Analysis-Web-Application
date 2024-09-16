@@ -1,74 +1,77 @@
-# Getting Started with Create React App
+# Image Analysis Project
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Overview
 
-## Available Scripts
+This web application allows users to log in, upload images or zip folders, search for multiple objects within those images, and view the count of each object present. It is built using React for the frontend and Flask for the backend, with user authentication and authorization features. The application integrates with AWS Rekognition for image analysis and S3 buckets for image storage, while SQLite is used to manage image analysis results in a database to prevent analyzing the same image more than once.
 
-In the project directory, you can run:
+## Features
 
-### `npm start`
+- **Image Upload**: Users can upload images or zip files containing images.
+- **Object Search**: Users can search for specific objects within the images.
+- **Advanced Search**: Users can specify multiple objects to search for, and apply filters like size, shape, or color.
+- **Image Analysis**: Utilizes AWS Rekognition for analyzing images.
+- **Result Storage**: Analysis results are stored in an SQLite database.
+- **User Authentication**: Users can register and log in to access their uploads and search history.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Technologies Used
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- **Frontend**: React, Material-UI
+- **Backend**: Flask
+- **Database**: SQLite
+- **Image Analysis**: AWS Rekognition
+- **Image Storage**: AWS S3
 
-### `npm test`
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Installation
 
-### `npm run build`
+1. **Clone the Repository**
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+   ```sh
+   git clone https://github.com/yourusername/your-repository.git
+   cd your-repository
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Frontend Setup
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Navigate to the frontend directory and install dependencies:
 
-### `npm run eject`
+`npm install`
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Backend Setup
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Create the virtual environment:
+`python -m venv myenv`
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+#### Activate the virtual environment:
+##### On Windows:
+`myenv\Scripts\activate`
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+##### On macOS/Linux:
+`source myenv/bin/activate`
 
-## Learn More
+### Install necessary packages: Once the virtual environment is activated, you can install the packages you need using pip:
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+`pip install -r dependencies.txt`
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Environment Variables
+#### Set these environment variables
 
-### Code Splitting
+export = AWS_ACCESS_KEY_ID=your-access-key-id
+export = AWS_SECRET_ACCESS_KEY=your-secret-access-key
+export = AWS_REGION=your-region
+export = S3_BUCKET_NAME=your-bucket-name
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
 
-### Analyzing the Bundle Size
+### Database Initialization
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+##### Run the following command to initialize the SQLite database:
 
-### Making a Progressive Web App
+`python database.py`
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## Running the Application
+### Start the Backend
 
-### Advanced Configuration
+`python server.py`
+### Start the Frontend
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
-
-npm install @mui/material @emotion/react @emotion/styled react-dropzone react-toastify
-npm install jszip
-
+`npm start`
+The frontend will be available at http://localhost:3000.
