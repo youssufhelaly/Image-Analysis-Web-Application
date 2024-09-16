@@ -53,17 +53,26 @@ This web application allows users to log in, upload images or zip folders, searc
 `pip install -r dependencies.txt`
 
 ### Environment Variables
-#### Set these environment variables
 
-export = AWS_ACCESS_KEY_ID=your-access-key-id
-export = AWS_SECRET_ACCESS_KEY=your-secret-access-key
-export = AWS_REGION=your-region
-export = S3_BUCKET_NAME=your-bucket-name
+#### On macOS/Linux, create a file named .env in your project directory and add the following lines:
 
+`AWS_ACCESS_KEY_ID=your-access-key-id`
+`AWS_SECRET_ACCESS_KEY=your-secret-access-key`
+`AWS_REGION=your-region`
+`S3_BUCKET_NAME=your-bucket-name`
+##### To load these variables into your shell session, use:
+`export $(cat .env | xargs)`
+
+#### On Windows, set environment variables directly in your terminal session:
+
+`set AWS_ACCESS_KEY_ID=your-access-key-id`
+`set AWS_SECRET_ACCESS_KEY=your-secret-access-key`
+`set AWS_REGION=your-region`
+`set S3_BUCKET_NAME=your-bucket-name`
 
 ### Database Initialization
 
-##### Run the following command to initialize the SQLite database:
+#### Run the following command to initialize the SQLite database:
 
 `python database.py`
 
@@ -74,4 +83,3 @@ export = S3_BUCKET_NAME=your-bucket-name
 ### Start the Frontend
 
 `npm start`
-The frontend will be available at http://localhost:3000.
