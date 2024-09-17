@@ -1,6 +1,20 @@
+"""
+Database initialization and access functions.
+
+This module contains functions to initialize the database tables and
+to access the database to store and retrieve analysis results.
+"""
+
 import sqlite3
 
+
 def init_db():
+    """
+    Initialize the database tables.
+
+    This function creates the tables in the 'users.db' and
+    'image_analysis.db' databases if they do not already exist.
+    """
     conn = sqlite3.connect('users.db')
     cursor = conn.cursor()
     cursor.execute('''
@@ -26,7 +40,17 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 def file_exists(filename):
+    """
+    Check if a file already exists in the database.
+
+    Args:
+        filename (str): The name of the file to check.
+
+    Returns:
+        bool: True if the file exists, False otherwise.
+    """
     conn = sqlite3.connect('image_analysis.db')
     cursor = conn.cursor()
     cursor.execute('''
@@ -36,7 +60,18 @@ def file_exists(filename):
     conn.close()
     return exists
 
+
 def save_analysis_results(filename, labels):
+    """
+    Save the analysis results for a file to the database.
+
+    Args:
+        filename (str): The name of the file.
+        labels (list): The list of labels for the file.
+
+    Raises:
+        sqlite3.IntegrityError: If the filename already exists in the database.
+    """
     conn = sqlite3.connect('image_analysis.db')
     cursor = conn.cursor()
     try:
@@ -51,7 +86,17 @@ def save_analysis_results(filename, labels):
     finally:
         conn.close()
 
+
 def get_analysis_results(filename):
+    """
+    Retrieve the analysis results for a file from the database.
+
+    Args:
+        filename (str): The name of the file.
+
+    Returns:
+        list: The list of labels for the file.
+    """
     conn = sqlite3.connect('image_analysis.db')
     cursor = conn.cursor()
     cursor.execute('''
@@ -61,3 +106,4 @@ def get_analysis_results(filename):
     results = cursor.fetchall()
     conn.close()
     return results
+
