@@ -70,16 +70,12 @@ This web application allows users to log in, upload images or zip folders, searc
 `set AWS_REGION=your-region`
 `set S3_BUCKET_NAME=your-bucket-name`
 
-### Database Initialization
-
-#### Run the following command to initialize the SQLite database:
-
-`python database.py`
-
 ## Running the Application
 ### Start the Backend
 
-`python server.py`
+`cd backend`
+`python app.py`
 ### Start the Frontend
 
+`cd frontend`
 `npm start`
