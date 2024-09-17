@@ -109,7 +109,7 @@ const UploadImages = () => {
 
     try {
       const promises = objectInputs.map((obj) =>
-        axios.post('http://localhost:5000/find-object', {
+        axios.post('http://localhost:5000/images/find-object', {
           data,
           object: obj.object,
           count: obj.count,
@@ -163,7 +163,7 @@ const UploadImages = () => {
 
     try {
       setUploading(true);
-      const response = await axios.post('http://localhost:5000/upload-and-analyze', formData, {
+      const response = await axios.post('http://localhost:5000/images/upload-and-analyze', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}` // Add Authorization header
