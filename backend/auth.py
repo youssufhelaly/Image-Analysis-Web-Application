@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token
 from flask_login import login_required, logout_user
-from extensions import db, bcrypt, login_manager  # Import from extensions
+from extensions import db, bcrypt, login_manager
 from models import User
 
 auth_routes = Blueprint('auth_routes', __name__)
