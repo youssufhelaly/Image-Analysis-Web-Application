@@ -1,6 +1,18 @@
 import sqlite3
 
 def init_db():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
     conn = sqlite3.connect('image_analysis.db')
     cursor = conn.cursor()
     cursor.execute('''
@@ -39,7 +51,6 @@ def save_analysis_results(filename, labels):
     finally:
         conn.close()
 
-
 def get_analysis_results(filename):
     conn = sqlite3.connect('image_analysis.db')
     cursor = conn.cursor()
@@ -50,4 +61,3 @@ def get_analysis_results(filename):
     results = cursor.fetchall()
     conn.close()
     return results
-
