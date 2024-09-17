@@ -50,3 +50,4 @@ def get_analysis_results(filename):
     results = cursor.fetchall()
     conn.close()
     return results
+
