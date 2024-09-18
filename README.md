@@ -21,6 +21,8 @@ This web application allows users to log in, upload images or zip folders, searc
 - **Image Analysis**: AWS Rekognition
 - **Image Storage**: AWS S3
 
+# Video Demo
+https://github.com/user-attachments/assets/ce0e9f2e-0425-40f3-a5f6-7efbb7dec320
 
 ## Installation
 
