@@ -16,6 +16,7 @@ const LoginForm = () => {
   // State variables for form input and loading status
   const [username, setUsername] = useState(''); // State to store the inputted username
   const [password, setPassword] = useState(''); // State to store the inputted password
+  const [passwordVisible, setPasswordVisible] = useState(false); // State for toggling password visibility
   const [loading, setLoading] = useState(false); // State to handle loading spinner visibility during login request
 
   // Hook for navigating to different pages after successful login
@@ -74,48 +75,55 @@ const LoginForm = () => {
 
   return (
     <div className="login-container">
-      {/* Login form title */}
       <h2 className="login-title">Log In</h2>
-      
-      {/* Form for username and password inputs */}
       <form onSubmit={handleSubmit} className="login-form">
-        {/* Username input field */}
         <div className="form-group">
           <label htmlFor="username">Username</label>
           <input
             id="username"
             type="text"
-            value={username} // Binds the input value to the username state
-            onChange={(e) => setUsername(e.target.value)} // Updates the username state on input change
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             className="form-control"
-            aria-label="Username" // Accessibility label for screen readers
+            aria-label="Username"
+            placeholder="Enter your username"
           />
         </div>
 
-        {/* Password input field */}
         <div className="form-group">
           <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            value={password} // Binds the input value to the password state
-            onChange={(e) => setPassword(e.target.value)} // Updates the password state on input change
-            className="form-control"
-            aria-label="Password" // Accessibility label for screen readers
-          />
+          <div className="password-wrapper">
+            <input
+              id="password"
+              type={passwordVisible ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="form-control"
+              aria-label="Password"
+              placeholder="Enter your password"
+            />
+            <span
+              className="password-toggle"
+              onClick={() => setPasswordVisible(!passwordVisible)}
+            >
+              <i className={`material-icons ${passwordVisible ? 'visible' : 'hidden'}`}>
+                {passwordVisible ? 'visibility_off' : 'visibility'}
+              </i>
+            </span>
+          </div>
         </div>
 
-        {/* Submit button with a loading spinner during login request */}
-        <button type="submit" className="submit-button" disabled={loading}>
-          {/* If loading is true, show a spinner, else show the "Login" button text */}
-          {loading ? <CircularProgress size={24} /> : 'Login'}
-        </button>
+        <div className="action-group">
+          <button type="submit" className="submit-button" disabled={loading}>
+            {loading ? <CircularProgress size={24} /> : 'Login'}
+          </button>
+          <button className="register-button" onClick={() => navigate('/register')}>Register</button>
+        </div>
       </form>
-      
-      {/* Container for toast notifications */}
       <ToastContainer />
     </div>
   );
 };
 
 export default LoginForm;
+
