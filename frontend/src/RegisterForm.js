@@ -41,7 +41,9 @@ const RegisterForm = () => {
       await axios.post('http://localhost:5000/auth/register', { username, password });
 
       // If the request is successful, show a success message and navigate
-      toast.success('User registered successfully!');
+      toast.success('User registered successfully!', { autoClose: 2000 });
+
+      await new Promise(resolve => setTimeout(resolve, 2000));
       navigate('/login');
     } catch (error) {
       // If the request fails, show an error message
