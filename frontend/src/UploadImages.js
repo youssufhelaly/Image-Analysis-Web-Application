@@ -1,6 +1,7 @@
-import React, { useState, useCallback } from 'react';
-import JSZip from 'jszip';
-import axios from 'axios';
+// Import necessary libraries and components
+import React, { useState, useCallback } from 'react'; // Import React and hooks for state and callbacks
+import JSZip from 'jszip'; // Library for handling ZIP file extraction
+import axios from 'axios'; // HTTP client for making API requests
 import {
   Box,
   Button,
@@ -19,14 +20,14 @@ import {
   IconButton,
   Tooltip,
   Paper,
-} from '@mui/material';
-import { useDropzone } from 'react-dropzone';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import DeleteIcon from '@mui/icons-material/Delete';
-import './UploadImages.css';
+} from '@mui/material'; // Material-UI components for styling
+import { useDropzone } from 'react-dropzone'; // Hook for drag-and-drop file handling
+import { ToastContainer, toast } from 'react-toastify'; // Notification library for alerts
+import 'react-toastify/dist/ReactToastify.css'; // Import default styles for toast notifications
+import DeleteIcon from '@mui/icons-material/Delete'; // Icon for delete actions
+import './UploadImages.css'; // Import CSS file for component-specific styles
 
-// FilePreview component remains unchanged
+// Component to preview uploaded files
 const FilePreview = ({ preview, filename, onRemove, isRemovable, objectsFound }) => (
   <Grid item xs={12} md={4}>
     <Card className="response-card">
@@ -60,19 +61,23 @@ const FilePreview = ({ preview, filename, onRemove, isRemovable, objectsFound })
   </Grid>
 );
 
+// Main component for uploading and analyzing images
 const UploadImages = () => {
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const [filePreviews, setFilePreviews] = useState([]);
-  const [objectInputs, setObjectInputs] = useState([]);
-  const [currentObject, setCurrentObject] = useState('');
-  const [currentCount, setCurrentCount] = useState('');
-  const [targetResponses, setTargetResponses] = useState([]);
-  const [searchPerformed, setSearchPerformed] = useState(false);
-  const [searchCompletion, setSearchCompletion] = useState(false);
-  const [openDialog, setOpenDialog] = useState(false);
+  // State variables
+  const [selectedFiles, setSelectedFiles] = useState([]); // Stores selected files
+  const [uploading, setUploading] = useState(false); // Indicates if files are being uploaded
+  const [filePreviews, setFilePreviews] = useState([]); // Stores file previews
+  const [objectInputs, setObjectInputs] = useState([]); // Stores object search criteria
+  const [currentObject, setCurrentObject] = useState(''); // Current object input
+  const [currentCount, setCurrentCount] = useState(''); // Current count input
+  const [targetResponses, setTargetResponses] = useState([]); // Stores results of object searches
+  const [searchPerformed, setSearchPerformed] = useState(false); // Indicates if a search has been performed
+  const [searchCompletion, setSearchCompletion] = useState(false); // Indicates if search has completed
+  const [openDialog, setOpenDialog] = useState(false); // Controls the dialog for confirming removal of all files
 
+  // Handles file drop and ZIP extraction
   const onDrop = useCallback(async (acceptedFiles) => {
+    // Reset search results and statuses
     setTargetResponses([]);
     setSearchPerformed(false);
     setSearchCompletion(false);
@@ -80,6 +85,7 @@ const UploadImages = () => {
     const newFiles = [];
     for (const file of acceptedFiles) {
       if (file.type === 'application/zip') {
+        // Handle ZIP files
         const zip = new JSZip();
         const zipContent = await file.arrayBuffer();
         const unzipped = await zip.loadAsync(zipContent);
@@ -97,17 +103,21 @@ const UploadImages = () => {
         newFiles.push(file);
       }
     }
+    // Create previews for new files
     const newFilePreviews = newFiles.map((file) => URL.createObjectURL(file));
     setSelectedFiles((prevFiles) => [...prevFiles, ...newFiles]);
     setFilePreviews((prevPreviews) => [...prevPreviews, ...newFilePreviews]);
   }, []);
 
+  // Dropzone hook for handling file drag-and-drop
   const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
+  // Function to find target objects in a file
   const FindTargetObject = async (data, file) => {
     const token = localStorage.getItem('authToken'); // Retrieve token from localStorage
 
     try {
+      // Create an array of promises to find objects in the image
       const promises = objectInputs.map((obj) =>
         axios.post('http://localhost:5000/images/find-object', {
           data,
@@ -118,6 +128,7 @@ const UploadImages = () => {
         })
       );
 
+      // Wait for all promises to resolve
       const responses = await Promise.all(promises);
 
       // Collect found objects with their counts
@@ -126,7 +137,7 @@ const UploadImages = () => {
         count: response.data.number_of_objects_found || 0,
       }));
 
-      // Check if all filters are met
+      // Check if all search criteria are met
       const allFiltersMet = objectInputs.every((obj, index) => {
         const foundObject = foundObjects.find((o) => o.object === obj.object);
         if (obj.count === 0) {
@@ -136,6 +147,7 @@ const UploadImages = () => {
       });
 
       if (allFiltersMet) {
+        // Update responses with found objects
         setTargetResponses((prevResponses) => [
           ...prevResponses,
           {
@@ -147,6 +159,7 @@ const UploadImages = () => {
       }
 
     } catch (error) {
+      // Handle errors
       toast.error(
         error.response
           ? `Error finding target object: ${error.response.data}`
@@ -155,6 +168,7 @@ const UploadImages = () => {
     }
   };
 
+  // Function to upload a file and analyze it
   const handleUpload = async (file) => {
     const formData = new FormData();
     formData.append('files', file);
@@ -179,9 +193,11 @@ const UploadImages = () => {
     }
   };
 
+  // Function to handle form submission
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    // Check if files and search objects are provided
     if (selectedFiles.length === 0) {
       toast.error('Please select files first.');
       return;
@@ -195,6 +211,7 @@ const UploadImages = () => {
     setSearchPerformed(true);
     setSearchCompletion(false);
 
+    // Upload and analyze all selected files
     await Promise.all(selectedFiles.map((file) => handleUpload(file)));
 
     setSearchCompletion(true);
@@ -203,6 +220,7 @@ const UploadImages = () => {
     setFilePreviews([]);
   };
 
+  // Function to handle removing a specific file
   const handleRemoveFile = (index) => {
     const updatedFiles = [...selectedFiles];
     const updatedPreviews = [...filePreviews];
@@ -212,23 +230,28 @@ const UploadImages = () => {
     setFilePreviews(updatedPreviews);
   };
 
+  // Function to handle removing all files and opening confirmation dialog
   const handleRemoveAllFiles = () => {
     setOpenDialog(true);
   };
 
+  // Function to confirm removal of all files
   const confirmRemoveAllFiles = () => {
     setSelectedFiles([]);
     setFilePreviews([]);
     setOpenDialog(false);
   };
 
+  // Function to cancel removal of all files
   const cancelRemoveAllFiles = () => {
     setOpenDialog(false);
   };
 
+  // Function to add a new object to search criteria
   const handleAddObject = () => {
     const trimmedCount = currentCount.trim();
 
+    // Validate input fields
     if (currentObject.trim() === '' || trimmedCount === '') {
       toast.error('Please enter both object and count.');
       return;
@@ -241,24 +264,26 @@ const UploadImages = () => {
       return;
     }
 
+    // Add object and count to the list
     setObjectInputs([...objectInputs, { object: currentObject.trim(), count: countValue }]);
     setCurrentObject('');
     setCurrentCount('');
   };
 
+  // Function to remove a specific object from search criteria
   const handleRemoveObject = (index) => {
     const updatedObjects = [...objectInputs];
     updatedObjects.splice(index, 1);
     setObjectInputs(updatedObjects);
   };
 
+  // Function to handle changes in the count input field
   const handleCountChange = (e) => {
     const newValue = e.target.value;
     if (newValue >= 0) {
       setCurrentCount(newValue);
     }
   };
-
 
   return (
     // Main container for the entire component layout with background styling and padding
