@@ -7,6 +7,8 @@ to access the database to store and retrieve analysis results.
 
 import sqlite3
 
+from models import AnalysisResult
+from extensions import db
 
 def init_db():
     """
@@ -51,14 +53,9 @@ def file_exists(filename):
     Returns:
         bool: True if the file exists, False otherwise.
     """
-    conn = sqlite3.connect('image_analysis.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT 1 FROM analysis_results WHERE filename = ?
-    ''', (filename,))
-    exists = cursor.fetchone() is not None
-    conn.close()
-    return exists
+    # Query the database using SQLAlchemy ORM
+    result = db.session.query(AnalysisResult).filter_by(filename=filename).first()
+    return result is not None
 
 
 def save_analysis_results(filename, labels):
@@ -72,38 +69,23 @@ def save_analysis_results(filename, labels):
     Raises:
         sqlite3.IntegrityError: If the filename already exists in the database.
     """
-    conn = sqlite3.connect('image_analysis.db')
-    cursor = conn.cursor()
+    new_result = AnalysisResult(filename=filename, labels=str(labels))
     try:
-        cursor.execute('''
-            INSERT INTO analysis_results (filename, labels)
-            VALUES (?, ?)
-        ''', (filename, str(labels)))
-        conn.commit()
-    except sqlite3.IntegrityError:
-        # Handle the case where the filename already exists
-        print(f"File {filename} already exists in the database.")
-    finally:
-        conn.close()
-
+        db.session.add(new_result)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error saving file {filename}: {e}")
 
 def get_analysis_results(filename):
     """
     Retrieve the analysis results for a file from the database.
-
+    
     Args:
         filename (str): The name of the file.
-
+    
     Returns:
         list: The list of labels for the file.
     """
-    conn = sqlite3.connect('image_analysis.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT * FROM analysis_results
-        WHERE filename = ?
-    ''', (filename,))
-    results = cursor.fetchall()
-    conn.close()
-    return results
-
+    result = db.session.query(AnalysisResult).filter_by(filename=filename).first()
+    return result.labels if result else None
