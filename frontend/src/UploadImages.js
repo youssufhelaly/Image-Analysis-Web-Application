@@ -261,53 +261,68 @@ const UploadImages = () => {
 
 
   return (
+    // Main container for the entire component layout with background styling and padding
     <Box sx={{ padding: 15, background: 'linear-gradient(135deg, rgba(173, 216, 230, 0.5), rgba(240, 248, 255, 0.3))' }}>
+      
+      {/* Title of the component with gradient background and text styling */}
       <Typography 
         variant="h3"
         sx={{
           fontWeight: 'bold',
           fontSize: '3rem',
           textAlign: 'center',
-          background: 'linear-gradient(90deg, #2193b0, #6dd5ed)',
-          WebkitBackgroundClip: 'text',
-          letterSpacing: '2px',
-          color: 'transparent'
+          background: 'linear-gradient(90deg, #2193b0, #6dd5ed)',  // Gradient background
+          WebkitBackgroundClip: 'text',  // Clip background for text
+          letterSpacing: '2px',  // Spacing between letters
+          color: 'transparent'  // Text color is transparent to reveal the gradient
         }}
       >
         Upload and Analyze Images
       </Typography>
+  
+      {/* Paper component for elevation and padding of the file upload area */}
       <Paper elevation={3} sx={{ padding: 4, marginTop: 4 }}>
+        
+        {/* File upload area with drag & drop functionality */}
         <Box {...getRootProps()} sx={{ border: '2px dashed #2196F3', borderRadius: 2, padding: 4, textAlign: 'center' }}>
           <input {...getInputProps()} />
           <Typography variant="h6" gutterBottom>
             Drag & Drop images or zip files here, or click to select files
           </Typography>
+          
+          {/* Button for selecting files manually */}
           <Button variant="contained" color="primary" sx={{ marginTop: 2 }}>
             Select Files
           </Button>
         </Box>
+  
+        {/* Tooltip with an icon button to remove all uploaded files */}
         <Tooltip title="Remove All Files">
           <IconButton
             color="error"
-            onClick={handleRemoveAllFiles}
-            sx={{ position: 'fixed', bottom: 16, right: 16 }}
+            onClick={handleRemoveAllFiles}  // Calls the function to remove all files
+            sx={{ position: 'fixed', bottom: 16, right: 16 }}  // Fixed positioning at the bottom right
           >
             <DeleteIcon />
           </IconButton>
         </Tooltip>
+  
+        {/* Grid container to display file previews if files are uploaded */}
         {filePreviews.length > 0 && (
           <Grid container spacing={2} sx={{ marginTop: 2 }}>
             {filePreviews.map((preview, index) => (
               <FilePreview
                 key={index}
-                preview={preview}
-                filename={selectedFiles[index].name}
-                onRemove={() => handleRemoveFile(index)}
-                isRemovable={true}  // Allow removing files
+                preview={preview}  // File preview passed as a prop
+                filename={selectedFiles[index].name}  // File name passed as a prop
+                onRemove={() => handleRemoveFile(index)}  // Remove handler for individual files
+                isRemovable={true}  // Allow the removal of files
               />
             ))}
           </Grid>
         )}
+  
+        {/* Dialog box for confirming the removal of all files */}
         <Dialog open={openDialog} onClose={cancelRemoveAllFiles}>
           <DialogTitle>Confirm</DialogTitle>
           <DialogContent>
@@ -320,81 +335,98 @@ const UploadImages = () => {
             </Button>
           </DialogActions>
         </Dialog>
+  
+        {/* Form to allow users to input search criteria for objects */}
         <Box component="form" onSubmit={handleSubmit} sx={{ marginTop: 4 }}>
           <Typography variant="h6" gutterBottom>
             Search for Objects
           </Typography>
+  
+          {/* Input for object name */}
           <TextField
             label="Object"
-            value={currentObject}
-            onChange={(e) => setCurrentObject(e.target.value)}
+            value={currentObject}  // Current object input value
+            onChange={(e) => setCurrentObject(e.target.value)}  // Updates the input value
             fullWidth
             sx={{ marginBottom: 2 }}
           />
+  
+          {/* Input for object count */}
           <TextField
             label="Count"
             type="number"
-            value={currentCount}
-            onChange={handleCountChange}
+            value={currentCount}  // Current count input value
+            onChange={handleCountChange}  // Updates the count value
             fullWidth
             sx={{ marginBottom: 2 }}
           />
+  
+          {/* Button to add the object input */}
           <Button variant="contained" color="primary" onClick={handleAddObject}>
             Add Object
           </Button>
+  
+          {/* Displays added objects as chips */}
           <Box sx={{ marginTop: 2 }}>
             {objectInputs.map((obj, index) => (
               <Chip
                 key={index}
-                label={`${obj.object} (Count: ${obj.count})`}
-                onDelete={() => handleRemoveObject(index)}
+                label={`${obj.object} (Count: ${obj.count})`}  // Display object and its count
+                onDelete={() => handleRemoveObject(index)}  // Allows deleting the chip
                 sx={{ marginRight: 1, marginBottom: 1 }}
               />
             ))}
           </Box>
+  
+          {/* Submit button to upload and analyze images, with a circular progress indicator if uploading */}
           <Button
             type="submit"
             variant="contained"
             color="secondary"
-            disabled={uploading || objectInputs.length === 0 || filePreviews.length === 0 }
+            disabled={uploading || objectInputs.length === 0 || filePreviews.length === 0}  // Disabled if conditions not met
             sx={{ marginTop: 2 }}
           >
             {uploading ? <CircularProgress size={24} /> : 'Upload and Analyze'}
           </Button>
         </Box>
       </Paper>
+  
+      {/* Display search results or a message if no results are found */}
       {searchPerformed && searchCompletion && targetResponses.length > 0 ? (
-  <Paper elevation={3} sx={{ padding: 4, marginTop: 4 }}>
-    <Typography variant="h6" gutterBottom>
-      Search Results
-    </Typography>
-    <Grid container spacing={2}>
-      {targetResponses.map((response, index) => (
-        <FilePreview
-          key={index}
-          preview={response.preview}
-          filename={response.filename}
-          objectsFound={response.objectsFound} // Pass the objectsFound prop
-          isRemovable={false}  // Do not allow removing search results
-        />
-      ))}
-    </Grid>
-  </Paper>
-) : (
-  <Paper elevation={3} sx={{ padding: 4, marginTop: 4 }}>
-    <Typography variant="h6" gutterBottom>
-      No Results
-    </Typography>
-    <Typography variant="body2">
-      {searchPerformed && searchCompletion
-        ? 'No images matched the search criteria.'
-        : 'Please perform a search to see results.'}
-    </Typography>
-  </Paper>
-)}
+        <Paper elevation={3} sx={{ padding: 4, marginTop: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Search Results
+          </Typography>
+          
+          {/* Grid container for displaying search results */}
+          <Grid container spacing={2}>
+            {targetResponses.map((response, index) => (
+              <FilePreview
+                key={index}
+                preview={response.preview}  // Preview of the analyzed file
+                filename={response.filename}  // Filename from the analysis
+                objectsFound={response.objectsFound}  // Objects found in the file
+                isRemovable={false}  // Files are not removable after search
+              />
+            ))}
+          </Grid>
+        </Paper>
+      ) : (
+        <Paper elevation={3} sx={{ padding: 4, marginTop: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            No Results
+          </Typography>
+          <Typography variant="body2">
+            {searchPerformed && searchCompletion
+              ? 'No images matched the search criteria.'  // Message if no matches found
+              : 'Please perform a search to see results.'}
+          </Typography>
+        </Paper>
+      )}
+  
+      {/* Toast notifications for success/failure messages */}
       <ToastContainer />
     </Box>
   );
-};
-
+}
 export default UploadImages;
