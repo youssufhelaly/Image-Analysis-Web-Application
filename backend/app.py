@@ -6,6 +6,7 @@ configures the logging, and registers the blueprints (routes).
 """
 import os
 from flask import Flask, send_from_directory
+from config import Config
 from extensions import db, login_manager, bcrypt, jwt
 from flask_cors import CORS
 import logging
@@ -19,7 +20,7 @@ app = Flask(__name__, static_folder='build', static_url_path='')
 # Set SQLALCHEMY_DATABASE_URI to connect to the SQLite database
 # The value is retrieved from the environment variables
 # If not set, it defaults to 'sqlite:///users.db'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI', 'sqlite:///users.db')
+app.config.from_object(Config)
 
 # Set SECRET_KEY to a secret key
 # The value is retrieved from the environment variables
@@ -47,7 +48,7 @@ app.register_blueprint(auth_routes, url_prefix='/auth')
 # This is done in an application context to ensure
 # that the database is initialized correctly
 with app.app_context():
-    init_db()
+    db.create_all()
 
 # Static File Serving (React Frontend)
 # This is the main entry point for the React frontend
