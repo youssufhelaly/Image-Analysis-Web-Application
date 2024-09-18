@@ -76,8 +76,7 @@ def find_object():
     found_target_object = False
     number_of_objects_found = 0
 
-    labels = response[0][2]
-    labels = labels[1:len(labels)-1]
+    labels = response[1:len(response)-1]
     labels = ast.literal_eval(labels)
 
     for label in labels:
