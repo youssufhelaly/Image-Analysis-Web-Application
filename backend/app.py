@@ -61,8 +61,10 @@ def serve_react_app(path=''):
     If the requested path is a file that exists in the 'build' folder,
     it is served directly. Otherwise, it serves the 'index.html' file.
     """
-    if path and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
+    if path:
+        fullpath = os.path.normpath(os.path.join(app.static_folder, path))
+        if fullpath.startswith(app.static_folder) and os.path.exists(fullpath):
+            return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == "__main__":
