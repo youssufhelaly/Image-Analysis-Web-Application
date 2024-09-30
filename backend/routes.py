@@ -49,7 +49,7 @@ def upload_and_analyze():
             })
             continue
 
-        result = upload_and_analyze_image(file, file.filename)
+        result = upload_and_analyze_image(file)
         responses.append(result)
 
     return jsonify(responses), 200

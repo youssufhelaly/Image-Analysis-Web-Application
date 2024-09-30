@@ -28,13 +28,12 @@ rekognition_client = boto3.client(
 # The name of the S3 bucket
 S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
 
-def upload_and_analyze_image(file, filename):
+def upload_and_analyze_image(file):
     """
     Uploads a file to S3 and analyzes it using Rekognition
 
     Args:
         file (file-like object): The file to upload and analyze
-        filename (str): The name of the file
 
     Returns:
         A dictionary containing the filename, a success message, and the labels
