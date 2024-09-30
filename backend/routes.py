@@ -8,7 +8,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import User
 from aws_services import upload_and_analyze_image
-from database import file_exists, get_analysis_results, save_analysis_results
+from database import file_exists, get_analysis_results
 
 image_routes = Blueprint('image_routes', __name__)
 

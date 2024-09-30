@@ -6,6 +6,8 @@ Provides functions to interact with AWS services
 
 import boto3
 import os
+from database import save_analysis_results
+import logging
 
 # S3 client
 s3_client = boto3.client(
@@ -25,11 +27,6 @@ rekognition_client = boto3.client(
 
 # The name of the S3 bucket
 S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
-
-# Import the save_analysis_results function from the database module
-from database import save_analysis_results
-import logging
-
 
 def upload_and_analyze_image(file, filename):
     """
