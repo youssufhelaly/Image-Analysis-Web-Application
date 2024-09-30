@@ -64,8 +64,8 @@ def upload_and_analyze_image(file, filename):
         }
     except Exception as e:
         # Log any errors that occur
-        logging.error(f"Error processing file {file.filename}: {e}")
-        # Return an error message
-        return {"filename": file.filename, "msg": "Error processing file", "error": str(e)}
+        logging.error(f"Error processing file {file.filename}: {e}", exc_info=True)
+        # Return a generic error message
+        return {"filename": file.filename, "msg": "Error processing file"}
 
 

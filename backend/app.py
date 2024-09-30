@@ -58,7 +58,9 @@ def serve():
 
 if __name__ == "__main__":
     """
-    Runs the application in debug mode if this file is run directly.
+    Runs the application.
+    Debug mode is enabled based on the FLASK_DEBUG environment variable.
     """
-    app.run(debug=True)
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() in ['true', '1', 't']
+    app.run(debug=debug_mode)
 
