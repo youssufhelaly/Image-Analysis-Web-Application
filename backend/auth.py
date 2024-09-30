@@ -8,27 +8,10 @@ This blueprint contains routes for user registration, login, and logout.
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token
 from flask_login import login_required, logout_user
-from extensions import db, bcrypt, login_manager
+from extensions import db, bcrypt
 from models import User
 
 auth_routes = Blueprint('auth_routes', __name__)
-
-
-@login_manager.user_loader
-def load_user(user_id):
-    """
-    Load a user by ID.
-
-    This function is used by Flask-Login to load a user by ID.
-
-    Args:
-        user_id (int): The ID of the user to load.
-
-    Returns:
-        User: The loaded user.
-    """
-    return User.query.get(int(user_id))
-
 
 @auth_routes.route('/register', methods=['POST'])
 def register():
