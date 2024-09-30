@@ -1,7 +1,7 @@
 // Import necessary libraries and components
-import React, { useState, useCallback } from 'react'; // Import React and hooks for state and callbacks
-import JSZip from 'jszip'; // Library for handling ZIP file extraction
-import axios from 'axios'; // HTTP client for making API requests
+import React, { useState, useCallback } from 'react';
+import JSZip from 'jszip'; 
+import axios from 'axios';
 import {
   Box,
   Button,
@@ -20,12 +20,10 @@ import {
   IconButton,
   Tooltip,
   Paper,
-} from '@mui/material'; // Material-UI components for styling
-import { useDropzone } from 'react-dropzone'; // Hook for drag-and-drop file handling
-import { ToastContainer, toast } from 'react-toastify'; // Notification library for alerts
-import 'react-toastify/dist/ReactToastify.css'; // Import default styles for toast notifications
-import DeleteIcon from '@mui/icons-material/Delete'; // Icon for delete actions
-import './UploadImages.css'; // Import CSS file for component-specific styles
+} from '@mui/material'; styling
+import { useDropzone } from 'react-dropzone'; 
+import { ToastContainer, toast } from 'react-toastify'; import 'react-toastify/dist/ReactToastify.css';
+import DeleteIcon from '@mui/icons-material/Delete'; import './UploadImages.css'; 
 
 // Component to preview uploaded files
 const FilePreview = ({ preview, filename, onRemove, isRemovable, objectsFound }) => (
@@ -112,62 +110,6 @@ const UploadImages = () => {
   // Dropzone hook for handling file drag-and-drop
   const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
-  // Function to find target objects in a file
-  const FindTargetObject = async (data, file) => {
-    const token = localStorage.getItem('authToken'); // Retrieve token from localStorage
-
-    try {
-      // Create an array of promises to find objects in the image
-      const promises = objectInputs.map((obj) =>
-        axios.post('http://localhost:5000/images/find-object', {
-          data,
-          object: obj.object,
-          count: obj.count,
-        }, {
-          headers: { 'Authorization': `Bearer ${token}` } // Add Authorization header
-        })
-      );
-
-      // Wait for all promises to resolve
-      const responses = await Promise.all(promises);
-
-      // Collect found objects with their counts
-      const foundObjects = responses.map((response, index) => ({
-        object: objectInputs[index].object,
-        count: response.data.number_of_objects_found || 0,
-      }));
-
-      // Check if all search criteria are met
-      const allFiltersMet = objectInputs.every((obj, index) => {
-        const foundObject = foundObjects.find((o) => o.object === obj.object);
-        if (obj.count === 0) {
-          return !foundObject || foundObject.count === 0;
-        }
-        return foundObject && foundObject.count >= obj.count;
-      });
-
-      if (allFiltersMet) {
-        // Update responses with found objects
-        setTargetResponses((prevResponses) => [
-          ...prevResponses,
-          {
-            preview: URL.createObjectURL(file),
-            filename: file.name,
-            objectsFound: foundObjects,
-          },
-        ]);
-      }
-
-    } catch (error) {
-      // Handle errors
-      toast.error(
-        error.response
-          ? `Error finding target object: ${error.response.data}`
-          : error.message
-      );
-    }
-  };
-
   // Function to upload a file and analyze it
   const handleUpload = async (file) => {
     const formData = new FormData();
@@ -193,6 +135,62 @@ const UploadImages = () => {
     }
   };
 
+    // Function to find target objects in a file
+    const FindTargetObject = async (data, file) => {
+      const token = localStorage.getItem('authToken'); // Retrieve token from localStorage
+  
+      try {
+        // Create an array of promises to find objects in the image
+        const promises = objectInputs.map((obj) =>
+          axios.post('http://localhost:5000/images/find-object', {
+            data,
+            object: obj.object,
+            count: obj.count,
+          }, {
+            headers: { 'Authorization': `Bearer ${token}` } // Add Authorization header
+          })
+        );
+  
+        // Wait for all promises to resolve
+        const responses = await Promise.all(promises);
+  
+        // Collect found objects with their counts
+        const foundObjects = responses.map((response, index) => ({
+          object: objectInputs[index].object,
+          count: response.data.number_of_objects_found || 0,
+        }));
+  
+        // Check if all search criteria are met
+        const allFiltersMet = objectInputs.every((obj, index) => {
+          const foundObject = foundObjects.find((o) => o.object === obj.object);
+          if (obj.count === 0) {
+            return !foundObject || foundObject.count === 0;
+          }
+          return foundObject && foundObject.count >= obj.count;
+        });
+  
+        if (allFiltersMet) {
+          // Update responses with found objects
+          setTargetResponses((prevResponses) => [
+            ...prevResponses,
+            {
+              preview: URL.createObjectURL(file),
+              filename: file.name,
+              objectsFound: foundObjects,
+            },
+          ]);
+        }
+  
+      } catch (error) {
+        // Handle errors
+        toast.error(
+          error.response
+            ? `Error finding target object: ${error.response.data}`
+            : error.message
+        );
+      }
+    };
+  
   // Function to handle form submission
   const handleSubmit = async (event) => {
     event.preventDefault();

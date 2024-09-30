@@ -1,10 +1,11 @@
 // Importing necessary dependencies
-import React, { useState } from 'react'; // React and useState hook for managing component state
-import { useNavigate } from 'react-router-dom'; // useNavigate hook for programmatic navigation
-import { ToastContainer, toast } from 'react-toastify'; // Toast notifications for user feedback
-import 'react-toastify/dist/ReactToastify.css'; // Importing CSS for Toast notifications
-import './LoginForm.css'; // Importing custom CSS for styling the login form
-import CircularProgress from '@mui/material/CircularProgress'; // Material-UI component for loading spinner
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import './LoginForm.css';
+import CircularProgress from '@mui/material/CircularProgress';
+spinner
 
 /**
  * LoginForm Component
