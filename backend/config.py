@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+
 class Config:
     """
     Configuration class for the Flask application.
@@ -15,7 +18,7 @@ class Config:
     SQLALCHEMY_BINDS = {
         'image_analysis': 'sqlite:///image_analysis.db'
     }
-
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=1)  # Token expires in 30 days
     # Whether to track modifications to the database
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

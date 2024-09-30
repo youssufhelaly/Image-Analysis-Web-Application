@@ -17,9 +17,8 @@ from auth import auth_routes
 
 app = Flask(__name__, static_folder='build', static_url_path='')
 
-# Set SQLALCHEMY_DATABASE_URI to connect to the SQLite database
-# The value is retrieved from the environment variables
-# If not set, it defaults to 'sqlite:///users.db'
+
+# Load configuration from config.py
 app.config.from_object(Config)
 
 # Set SECRET_KEY to a secret key
