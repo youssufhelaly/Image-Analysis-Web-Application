@@ -20,10 +20,12 @@ import {
   IconButton,
   Tooltip,
   Paper,
-} from '@mui/material'; styling
+} from '@mui/material';
 import { useDropzone } from 'react-dropzone'; 
-import { ToastContainer, toast } from 'react-toastify'; import 'react-toastify/dist/ReactToastify.css';
-import DeleteIcon from '@mui/icons-material/Delete'; import './UploadImages.css'; 
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import DeleteIcon from '@mui/icons-material/Delete';
+import './UploadImages.css'; 
 
 // Component to preview uploaded files
 const FilePreview = ({ preview, filename, onRemove, isRemovable, objectsFound }) => (
