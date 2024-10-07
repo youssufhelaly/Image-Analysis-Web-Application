@@ -10,7 +10,6 @@ from config import Config
 from extensions import db, login_manager, bcrypt, jwt
 from flask_cors import CORS
 import logging
-from database import init_db
 from routes import image_routes
 from auth import auth_routes
 

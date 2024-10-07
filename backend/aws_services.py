@@ -1,32 +1,32 @@
 """
-Provides functions to interact with AWS services
+Provides a function to interact with AWS services
 
 * upload_and_analyze_image: upload a file to S3 and analyze it using Rekognition
 """
-
 import boto3
 import os
 from database import save_analysis_results
 import logging
 
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+S3_BUCKET_NAME = "objectrekognitionimages"
+
 # S3 client
 s3_client = boto3.client(
     's3',
-    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-    region_name=os.getenv('AWS_REGION', 'us-west-2')
+    aws_access_key_id = AWS_ACCESS_KEY_ID,
+    aws_secret_access_key = AWS_SECRET_ACCESS_KEY,
+    region_name = 'us-east-2'
 )
 
 # Rekognition client
 rekognition_client = boto3.client(
     'rekognition',
-    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-    region_name='us-east-2'
+    aws_access_key_id = AWS_ACCESS_KEY_ID,
+    aws_secret_access_key = AWS_SECRET_ACCESS_KEY,
+    region_name = 'us-east-2'
 )
-
-# The name of the S3 bucket
-S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
 
 def upload_and_analyze_image(file):
     """
