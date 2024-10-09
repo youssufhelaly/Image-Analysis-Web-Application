@@ -1,6 +1,5 @@
-// Import necessary libraries and components
-import React, { useState, useCallback } from 'react';
-import JSZip from 'jszip'; 
+import React, { useState, useCallback, useMemo } from 'react';
+import JSZip from 'jszip';
 import axios from 'axios';
 import {
   Box,
@@ -20,16 +19,19 @@ import {
   IconButton,
   Tooltip,
   Paper,
+  LinearProgress,
 } from '@mui/material';
-import { useDropzone } from 'react-dropzone'; 
+import { useDropzone } from 'react-dropzone';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import DeleteIcon from '@mui/icons-material/Delete';
-import './UploadImages.css'; 
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import SearchIcon from '@mui/icons-material/Search';
+import './UploadImages.css';
 
 // Component to preview uploaded files
-const FilePreview = ({ preview, filename, onRemove, isRemovable, objectsFound }) => (
-  <Grid item xs={12} md={4}>
+const FilePreview = React.memo(({ preview, filename, onRemove, isRemovable, objectsFound }) => (
+  <Grid item xs={12} sm={6} md={4}>
     <Card className="response-card">
       <CardMedia
         component="img"
@@ -45,21 +47,29 @@ const FilePreview = ({ preview, filename, onRemove, isRemovable, objectsFound })
         {objectsFound && objectsFound.length > 0 && (
           <Box sx={{ marginTop: 1 }}>
             {objectsFound.map((obj, index) => (
-              <Typography key={index} variant="body2">
-                {`${obj.object.toLowerCase()}: ${obj.count} found`}
-              </Typography>
+              <Chip
+                key={index}
+                label={`${obj.object.toLowerCase()}: ${obj.count}`}
+                size="small"
+                sx={{ margin: '2px' }}
+              />
             ))}
           </Box>
         )}
         {isRemovable && (
-          <Button className="remove-button" onClick={onRemove} sx={{ marginTop: 2 }}>
-            Remove
-          </Button>
+          <IconButton
+            className="remove-button"
+            onClick={onRemove}
+            size="small"
+            sx={{ marginTop: 1 }}
+          >
+            <DeleteIcon />
+          </IconButton>
         )}
       </CardContent>
     </Card>
   </Grid>
-);
+));
 
 // Main component for uploading and analyzing images
 const UploadImages = () => {
@@ -71,15 +81,16 @@ const UploadImages = () => {
   const [currentObject, setCurrentObject] = useState(''); // Current object input
   const [currentCount, setCurrentCount] = useState(''); // Current count input
   const [targetResponses, setTargetResponses] = useState([]); // Stores results of object searches
-  const [searchPerformed, setSearchPerformed] = useState(false); // Indicates if a search has been performed
+  const [searchPerforming, setSearchPerforming] = useState(false); // Indicates if a search has been performed
   const [searchCompletion, setSearchCompletion] = useState(false); // Indicates if search has completed
   const [openDialog, setOpenDialog] = useState(false); // Controls the dialog for confirming removal of all files
-
+  const [uploadProgress, setUploadProgress] = useState(0);
+  
   // Handles file drop and ZIP extraction
   const onDrop = useCallback(async (acceptedFiles) => {
     // Reset search results and statuses
     setTargetResponses([]);
-    setSearchPerformed(false);
+    setSearchPerforming(false);
     setSearchCompletion(false);
 
     const newFiles = [];
@@ -99,8 +110,10 @@ const UploadImages = () => {
         });
         const files = (await Promise.all(filePromises)).filter((file) => file !== null);
         newFiles.push(...files);
-      } else {
+      } else if (file.type.startsWith('image/')) {
         newFiles.push(file);
+      } else {
+        toast.warning(`Skipped unsupported file: ${file.name}`);
       }
     }
     // Create previews for new files
@@ -110,89 +123,92 @@ const UploadImages = () => {
   }, []);
 
   // Dropzone hook for handling file drag-and-drop
-  const { getRootProps, getInputProps } = useDropzone({ onDrop });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': [],
+      'application/zip': ['.zip'],
+    },
+  });
 
   // Function to upload a file and analyze it
-  const handleUpload = async (file) => {
+  const handleUpload = async (file, index) => {
     const formData = new FormData();
     formData.append('files', file);
 
     const token = localStorage.getItem('authToken'); // Retrieve token from localStorage
 
     try {
-      setUploading(true);
       const response = await axios.post('http://localhost:5000/images/upload-and-analyze', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}` // Add Authorization header
         },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress((prevProgress) => {
+            const newProgress = [...prevProgress];
+            newProgress[index] = percentCompleted;
+            return newProgress;
+          });
+        },
       });
       await FindTargetObject(response.data, file);
     } catch (error) {
-      toast.error(
-        `Error uploading file: ${error.response ? error.response.data : error.message}`
-      );
-    } finally {
-      setUploading(false);
+      toast.error(`Error uploading ${file.name}: ${error.response ? error.response.data : error.message}`);
     }
   };
 
     // Function to find target objects in a file
-    const FindTargetObject = async (data, file) => {
+  const FindTargetObject = async (data, file) => {
       const token = localStorage.getItem('authToken'); // Retrieve token from localStorage
-  
-      try {
+
+    try {
         // Create an array of promises to find objects in the image
-        const promises = objectInputs.map((obj) =>
-          axios.post('http://localhost:5000/images/find-object', {
-            data,
-            object: obj.object,
-            count: obj.count,
-          }, {
+      const promises = objectInputs.map((obj) =>
+        axios.post('http://localhost:5000/images/find-object', {
+          data,
+          object: obj.object,
+          count: obj.count,
+        }, {
             headers: { 'Authorization': `Bearer ${token}` } // Add Authorization header
-          })
-        );
-  
+        })
+      );
+
         // Wait for all promises to resolve
-        const responses = await Promise.all(promises);
-  
+      const responses = await Promise.all(promises);
+
         // Collect found objects with their counts
-        const foundObjects = responses.map((response, index) => ({
-          object: objectInputs[index].object,
-          count: response.data.number_of_objects_found || 0,
-        }));
-  
+      const foundObjects = responses.map((response, index) => ({
+        object: objectInputs[index].object,
+        count: response.data.number_of_objects_found || 0,
+      }));
+
         // Check if all search criteria are met
-        const allFiltersMet = objectInputs.every((obj, index) => {
-          const foundObject = foundObjects.find((o) => o.object === obj.object);
-          if (obj.count === 0) {
-            return !foundObject || foundObject.count === 0;
-          }
-          return foundObject && foundObject.count >= obj.count;
-        });
-  
-        if (allFiltersMet) {
-          // Update responses with found objects
-          setTargetResponses((prevResponses) => [
-            ...prevResponses,
-            {
-              preview: URL.createObjectURL(file),
-              filename: file.name,
-              objectsFound: foundObjects,
-            },
-          ]);
+      const allFiltersMet = objectInputs.every((obj, index) => {
+        const foundObject = foundObjects.find((o) => o.object === obj.object);
+        if (obj.count === 0) {
+          return !foundObject || foundObject.count === 0;
         }
-  
-      } catch (error) {
-        // Handle errors
-        toast.error(
-          error.response
-            ? `Error finding target object: ${error.response.data}`
-            : error.message
-        );
+        return foundObject && foundObject.count >= obj.count;
+      });
+
+      if (allFiltersMet) {
+          // Update responses with found objects
+        setTargetResponses((prevResponses) => [
+          ...prevResponses,
+          {
+            preview: URL.createObjectURL(file),
+            filename: file.name,
+            objectsFound: foundObjects,
+          },
+        ]);
       }
-    };
-  
+    } catch (error) {
+      toast.error(`Error analyzing ${file.name}: ${error.response ? error.response.data : error.message}`);
+    }
+  };
+
   // Function to handle form submission
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -208,22 +224,29 @@ const UploadImages = () => {
       return;
     }
 
-    setSearchPerformed(true);
+    setSearchPerforming(true);
     setSearchCompletion(false);
+    setUploading(true);
+    setUploadProgress(new Array(selectedFiles.length).fill(0));
 
     // Upload and analyze all selected files
-    await Promise.all(selectedFiles.map((file) => handleUpload(file)));
+    for (let i = 0; i < selectedFiles.length; i++) {
+      await handleUpload(selectedFiles[i], i);
+    }
 
     setSearchCompletion(true);
+    setUploading(false);
     toast.success('All files processed successfully!');
     setSelectedFiles([]);
     setFilePreviews([]);
+    setUploadProgress([]);
   };
 
   // Function to handle removing a specific file
   const handleRemoveFile = (index) => {
     const updatedFiles = [...selectedFiles];
     const updatedPreviews = [...filePreviews];
+    URL.revokeObjectURL(updatedPreviews[index]);
     updatedFiles.splice(index, 1);
     updatedPreviews.splice(index, 1);
     setSelectedFiles(updatedFiles);
@@ -237,6 +260,7 @@ const UploadImages = () => {
 
   // Function to confirm removal of all files
   const confirmRemoveAllFiles = () => {
+    filePreviews.forEach(URL.revokeObjectURL);
     setSelectedFiles([]);
     setFilePreviews([]);
     setOpenDialog(false);
@@ -280,47 +304,52 @@ const UploadImages = () => {
   // Function to handle changes in the count input field
   const handleCountChange = (e) => {
     const newValue = e.target.value;
-    if (newValue >= 0) {
+    if (newValue === '' || parseInt(newValue) >= 0) {
       setCurrentCount(newValue);
     }
   };
 
+  const dropzoneStyle = useMemo(() => ({
+    border: `2px dashed ${isDragActive ? '#4caf50' : '#2196F3'}`,
+    borderRadius: 2,
+    padding: 4,
+    textAlign: 'center',
+    transition: 'border .24s ease-in-out'
+  }), [isDragActive]);
+
   return (
     // Main container for the entire component layout with background styling and padding
-    <Box sx={{ padding: 15, background: 'linear-gradient(135deg, rgba(173, 216, 230, 0.5), rgba(240, 248, 255, 0.3))' }}>
-      
-      {/* Title of the component with gradient background and text styling */}
+    <Box sx={{ padding: { xs: 2, sm: 4, md: 6 }, background: 'linear-gradient(135deg, rgba(173, 216, 230, 0.5), rgba(240, 248, 255, 0.3))' }}>
       <Typography 
         variant="h3"
         sx={{
           fontWeight: 'bold',
-          fontSize: '3rem',
+          fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
           textAlign: 'center',
-          background: 'linear-gradient(90deg, #2193b0, #6dd5ed)',  // Gradient background
-          WebkitBackgroundClip: 'text',  // Clip background for text
-          letterSpacing: '2px',  // Spacing between letters
-          color: 'transparent'  // Text color is transparent to reveal the gradient
+          background: 'linear-gradient(90deg, #2193b0, #6dd5ed)',
+          WebkitBackgroundClip: 'text',
+          letterSpacing: '2px',
+          color: 'transparent',
+          marginBottom: 4
         }}
       >
         Upload and Analyze Images
       </Typography>
-  
-      {/* Paper component for elevation and padding of the file upload area */}
-      <Paper elevation={3} sx={{ padding: 4, marginTop: 4 }}>
-        
-        {/* File upload area with drag & drop functionality */}
-        <Box {...getRootProps()} sx={{ border: '2px dashed #2196F3', borderRadius: 2, padding: 4, textAlign: 'center' }}>
+
+      <Paper elevation={3} sx={{ padding: 4, marginBottom: 4 }}>
+        <Box {...getRootProps()} sx={dropzoneStyle}>
           <input {...getInputProps()} />
+          <CloudUploadIcon sx={{ fontSize: 48, color: isDragActive ? '#4caf50' : '#2196F3' }} />
           <Typography variant="h6" gutterBottom>
-            Drag & Drop images or zip files here, or click to select files
+            {isDragActive ? 'Drop the files here' : 'Drag & Drop images or ZIP files here, or click to select'}
           </Typography>
-          
+                  
           {/* Button for selecting files manually */}
           <Button variant="contained" color="primary" sx={{ marginTop: 2 }}>
             Select Files
           </Button>
         </Box>
-  
+
         {/* Tooltip with an icon button to remove all uploaded files */}
         <Tooltip title="Remove All Files">
           <IconButton
@@ -331,7 +360,7 @@ const UploadImages = () => {
             <DeleteIcon />
           </IconButton>
         </Tooltip>
-  
+
         {/* Grid container to display file previews if files are uploaded */}
         {filePreviews.length > 0 && (
           <Grid container spacing={2} sx={{ marginTop: 2 }}>
@@ -346,7 +375,7 @@ const UploadImages = () => {
             ))}
           </Grid>
         )}
-  
+
         {/* Dialog box for confirming the removal of all files */}
         <Dialog open={openDialog} onClose={cancelRemoveAllFiles}>
           <DialogTitle>Confirm</DialogTitle>
@@ -360,37 +389,44 @@ const UploadImages = () => {
             </Button>
           </DialogActions>
         </Dialog>
-  
+
         {/* Form to allow users to input search criteria for objects */}
         <Box component="form" onSubmit={handleSubmit} sx={{ marginTop: 4 }}>
           <Typography variant="h6" gutterBottom>
             Search for Objects
           </Typography>
-  
-          {/* Input for object name */}
-          <TextField
-            label="Object"
+
+          <Grid container spacing={2} alignItems="flex-end">
+            <Grid item xs={12} sm={5}>
+              <TextField
+                label="Object"
             value={currentObject}  // Current object input value
             onChange={(e) => setCurrentObject(e.target.value)}  // Updates the input value
-            fullWidth
-            sx={{ marginBottom: 2 }}
-          />
-  
-          {/* Input for object count */}
-          <TextField
-            label="Count"
-            type="number"
-            value={currentCount}  // Current count input value
-            onChange={handleCountChange}  // Updates the count value
-            fullWidth
-            sx={{ marginBottom: 2 }}
-          />
-  
-          {/* Button to add the object input */}
-          <Button variant="contained" color="primary" onClick={handleAddObject}>
-            Add Object
-          </Button>
-  
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={5}>
+              <TextField
+                label="Count"
+                type="number"
+                value={currentCount}  // Current count input value
+                onChange={handleCountChange}  // Updates the count value
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={2}>
+              <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={handleAddObject}
+                fullWidth
+                startIcon={<SearchIcon />}
+              >
+                Add
+              </Button>
+            </Grid>
+          </Grid>
+
           {/* Displays added objects as chips */}
           <Box sx={{ marginTop: 2 }}>
             {objectInputs.map((obj, index) => (
@@ -398,60 +434,61 @@ const UploadImages = () => {
                 key={index}
                 label={`${obj.object} (Count: ${obj.count})`}  // Display object and its count
                 onDelete={() => handleRemoveObject(index)}  // Allows deleting the chip
-                sx={{ marginRight: 1, marginBottom: 1 }}
+                sx={{ margin: '4px' }}
               />
             ))}
           </Box>
-  
+
           {/* Submit button to upload and analyze images, with a circular progress indicator if uploading */}
           <Button
             type="submit"
             variant="contained"
             color="secondary"
-            disabled={uploading || objectInputs.length === 0 || filePreviews.length === 0}  // Disabled if conditions not met
+            disabled={uploading || objectInputs.length === 0 || filePreviews.length === 0}
             sx={{ marginTop: 2 }}
+            startIcon={uploading ? <CircularProgress size={24} /> : null}
           >
-            {uploading ? <CircularProgress size={24} /> : 'Upload and Analyze'}
+            {uploading ? 'Processing...' : 'Upload and Analyze'}
           </Button>
         </Box>
+
+        {uploading && (
+          <Box sx={{ width: '100%', marginTop: 2 }}>
+            <LinearProgress variant="determinate" value={uploadProgress.reduce((a, b) => a + b, 0) / uploadProgress.length} />
+          </Box>
+        )}
       </Paper>
-  
-      {/* Display search results or a message if no results are found */}
-      {searchPerformed && searchCompletion && targetResponses.length > 0 ? (
-        <Paper elevation={3} sx={{ padding: 4, marginTop: 4 }}>
+
+      {searchPerforming && searchCompletion && (
+        <Paper elevation={3} sx={{ padding: 4 }}>
           <Typography variant="h6" gutterBottom>
             Search Results
           </Typography>
           
-          {/* Grid container for displaying search results */}
-          <Grid container spacing={2}>
-            {targetResponses.map((response, index) => (
-              <FilePreview
-                key={index}
+          {targetResponses.length > 0 ? (
+            <Grid container spacing={2}>
+              {targetResponses.map((response, index) => (
+                <FilePreview
+                  key={index}
                 preview={response.preview}  // Preview of the analyzed file
                 filename={response.filename}  // Filename from the analysis
                 objectsFound={response.objectsFound}  // Objects found in the file
                 isRemovable={false}  // Files are not removable after search
-              />
-            ))}
-          </Grid>
-        </Paper>
-      ) : (
-        <Paper elevation={3} sx={{ padding: 4, marginTop: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            No Results
-          </Typography>
-          <Typography variant="body2">
-            {searchPerformed && searchCompletion
-              ? 'No images matched the search criteria.'  // Message if no matches found
-              : 'Please perform a search to see results.'}
-          </Typography>
+                />
+              ))}
+            </Grid>
+          ) : (
+            <Typography variant="body2">
+              No images matched the search criteria.
+            </Typography>
+          )}
         </Paper>
       )}
-  
+
       {/* Toast notifications for success/failure messages */}
       <ToastContainer />
     </Box>
   );
-}
-export default UploadImages;
+};
+
+export default React.memo(UploadImages);
